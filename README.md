@@ -59,4 +59,32 @@ Full plan: see `.cursor/plans/ha_room_control_center_e561c219.plan.md` in the Cu
 
 ## Status
 
-**Scaffold only** — CDO production is saved; active development starts here.
+**Deploy-ready scaffold** — CDO production is frozen; active development happens here.
+
+### Deploy with an AI agent or from CLI
+
+1. Copy [`deploy/env.template`](deploy/env.template) → `deploy/.env` and fill in answers from [`deploy/QUESTIONNAIRE.md`](deploy/QUESTIONNAIRE.md)
+2. Run `./scripts/deploy.sh`
+
+Agents: read [`AGENTS.md`](AGENTS.md) and [`.cursor/skills/aatomhome-deploy/SKILL.md`](.cursor/skills/aatomhome-deploy/SKILL.md).
+
+### Prebuilt Android launcher (MIT)
+
+| Asset | Path |
+|-------|------|
+| APK | [`guest-launcher/releases/aatomhome-guest-welcome.apk`](guest-launcher/releases/aatomhome-guest-welcome.apk) |
+| SHA256 | [`guest-launcher/releases/aatomhome-guest-welcome.apk.sha256`](guest-launcher/releases/aatomhome-guest-welcome.apk.sha256) |
+| License | [`LICENSE`](LICENSE) |
+
+Package `com.cielodeloro.guestwelcome` — WebView home app for the hub welcome / control screen.
+
+### What you need before deploy
+
+| Item | Required for |
+|------|----------------|
+| `HUB_PUBLIC_URL` | TVs load welcome page |
+| `HA_URL` + long-lived token | HA integration & future room controls |
+| `TEMPEST_*` (optional) | Weather on welcome screen |
+| TV wireless debugging + pairing | Register each TV in hub |
+
+Full checklist: [`docs/DEPLOY.md`](docs/DEPLOY.md)

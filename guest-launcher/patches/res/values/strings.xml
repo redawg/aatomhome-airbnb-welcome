@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="welcome_accessibility_desc">Returns to the Cielo guest welcome screen after streaming apps are closed.</string>
+</resources>

@@ -1,5 +1,9 @@
-# Placeholder — forest-ha deploy bundle (Phase 6)
+# Placeholder — forest-ha deploy bundle
 
-Quadlets for Home Assistant + tv-hub on aatomhome will live here.
+Quadlet: [`adb-tv-hub.container`](adb-tv-hub.container)
 
-Target host: aatomhome.theschoenfelds.dom (172.16.1.30)
+Used by [`scripts/deploy.sh`](../scripts/deploy.sh) when `PODMAN_MODE=rootless` (default) or `rootful`.
+
+Target host example: **aatomhome** (`172.16.1.30`) with VPN/route to property TV LAN.
+
+See [`docs/DEPLOY.md`](../docs/DEPLOY.md).

@@ -1,7 +1,14 @@
 __pycache__/
 *.pyc
 .env
+deploy/.env
 *.env
-!*.env.example
+!deploy/env.template
+!deploy/forest-ha/*.env.example
 data/
 uploads/
+tv-hub/
+
+# Keep prebuilt APK in repo
+!guest-launcher/releases/*.apk
+!guest-launcher/releases/*.sha256
