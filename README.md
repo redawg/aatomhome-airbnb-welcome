@@ -64,7 +64,9 @@ Full plan: see `.cursor/plans/ha_room_control_center_e561c219.plan.md` in the Cu
 ### Deploy with an AI agent or from CLI
 
 1. Copy [`deploy/env.template`](deploy/env.template) → `deploy/.env` and fill in answers from [`deploy/QUESTIONNAIRE.md`](deploy/QUESTIONNAIRE.md)
-2. Run `./scripts/deploy.sh`
+   - **forest-ha:** start from [`deploy/forest-ha/env.example`](deploy/forest-ha/env.example)
+2. `./scripts/build.sh` — verify image builds
+3. `./scripts/deploy.sh` — install on host
 
 Agents: read [`AGENTS.md`](AGENTS.md) and [`.cursor/skills/aatomhome-deploy/SKILL.md`](.cursor/skills/aatomhome-deploy/SKILL.md).
 

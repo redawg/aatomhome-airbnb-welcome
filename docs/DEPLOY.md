@@ -10,7 +10,8 @@ End-to-end deployment guide for humans and AI coding agents.
 4. Run:
 
 ```bash
-./scripts/deploy.sh
+./scripts/build.sh    # verify container image builds
+./scripts/deploy.sh   # install on host (requires deploy/.env)
 ```
 
 5. Report health check results and remaining manual TV steps (wireless debugging pair, Home picker).
