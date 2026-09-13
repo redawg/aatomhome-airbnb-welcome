@@ -25,7 +25,7 @@ echo ""
 "$ROOT/scripts/fetch-upstream.sh"
 
 APK_SRC="${GUEST_LAUNCHER_APK:-$ROOT/guest-launcher/releases/aatomhome-guest-welcome.apk}"
-APK_DEST="$ROOT/tv-hub/guest-launcher/cielodeloro-guestwelcome.apk"
+APK_DEST="$ROOT/tv-hub/guest-launcher/aatomhome-guest-welcome.apk"
 mkdir -p "$(dirname "$APK_DEST")"
 
 if [[ "${PATCH_APK_HUB_URL:-1}" == "1" ]]; then

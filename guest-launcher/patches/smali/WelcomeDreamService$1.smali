@@ -1,4 +1,4 @@
-.class Lcom/cielodeloro/guestwelcome/WelcomeDreamService$1;
+.class Lcom/aatomhome/guestwelcome/WelcomeDreamService$1;
 .super Ljava/lang/Object;
 .source "WelcomeDreamService.java"
 
@@ -7,14 +7,14 @@
 
 
 # instance fields
-.field final synthetic this$0:Lcom/cielodeloro/guestwelcome/WelcomeDreamService;
+.field final synthetic this$0:Lcom/aatomhome/guestwelcome/WelcomeDreamService;
 
 
 # direct methods
-.method constructor <init>(Lcom/cielodeloro/guestwelcome/WelcomeDreamService;)V
+.method constructor <init>(Lcom/aatomhome/guestwelcome/WelcomeDreamService;)V
     .locals 0
 
-    iput-object p1, p0, Lcom/cielodeloro/guestwelcome/WelcomeDreamService$1;->this$0:Lcom/cielodeloro/guestwelcome/WelcomeDreamService;
+    iput-object p1, p0, Lcom/aatomhome/guestwelcome/WelcomeDreamService$1;->this$0:Lcom/aatomhome/guestwelcome/WelcomeDreamService;
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
 
@@ -26,9 +26,9 @@
 .method public onClick(Landroid/view/View;)V
     .locals 2
 
-    iget-object p1, p0, Lcom/cielodeloro/guestwelcome/WelcomeDreamService$1;->this$0:Lcom/cielodeloro/guestwelcome/WelcomeDreamService;
+    iget-object p1, p0, Lcom/aatomhome/guestwelcome/WelcomeDreamService$1;->this$0:Lcom/aatomhome/guestwelcome/WelcomeDreamService;
 
-    invoke-virtual {p1}, Lcom/cielodeloro/guestwelcome/WelcomeDreamService;->openWelcome()V
+    invoke-virtual {p1}, Lcom/aatomhome/guestwelcome/WelcomeDreamService;->openWelcome()V
 
     return-void
 .end method

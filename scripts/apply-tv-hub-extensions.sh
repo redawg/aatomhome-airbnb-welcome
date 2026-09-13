@@ -33,6 +33,7 @@ done
 python3 "$ROOT/scripts/patch-tv-hub-guest-account.py" "$DEST"
 python3 "$ROOT/scripts/patch-tv-hub-ops-logging.py" "$DEST"
 python3 "$ROOT/scripts/patch-tv-hub-guest-public.py" "$DEST"
+python3 "$ROOT/scripts/patch-tv-hub-guest-launcher-package.py" "$DEST"
 
 if [[ -d "$EXT_ROOT/guest-welcome" ]]; then
   rsync -a "$EXT_ROOT/guest-welcome/" "$DEST/guest-welcome/"

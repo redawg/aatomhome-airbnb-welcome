@@ -10,7 +10,7 @@ if [[ -f "$ENV_FILE" ]]; then
 fi
 
 APK="${GUEST_LAUNCHER_APK:-$ROOT/guest-launcher/releases/aatomhome-guest-welcome.apk}"
-HUB_URL="${HUB_GUEST_URL:-${HUB_PUBLIC_URL%/}/guest/}"
+HUB_URL="${HUB_GUEST_URL:-${HUB_PUBLIC_URL%/}/guest/onboard/}"
 WORKDIR="$(mktemp -d)"
 APKTOOL_JAR="${APKTOOL_JAR:-$WORKDIR/apktool.jar}"
 

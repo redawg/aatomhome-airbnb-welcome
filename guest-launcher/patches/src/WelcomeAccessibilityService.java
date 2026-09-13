@@ -1,4 +1,4 @@
-package com.cielodeloro.guestwelcome;
+package com.aatomhome.guestwelcome;
 
 import android.accessibilityservice.AccessibilityService;
 import android.app.ActivityManager;
@@ -20,7 +20,7 @@ import java.util.Set;
  */
 public class WelcomeAccessibilityService extends AccessibilityService {
     private static final String GOOGLE_TV = "com.google.android.apps.tv.launcherx";
-    private static final String WELCOME_PKG = "com.cielodeloro.guestwelcome";
+    private static final String WELCOME_PKG = "com.aatomhome.guestwelcome";
     private static final long RETURN_DELAY_MS = 8000L;
 
     private static final Set<String> IGNORABLE = new HashSet<>(Arrays.asList(

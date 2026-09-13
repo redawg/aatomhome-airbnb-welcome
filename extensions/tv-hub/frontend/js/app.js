@@ -1230,7 +1230,7 @@ async function loadSetupStatus() {
     if (apkMeta) {
       if (launcher.available) {
         const mb = launcher.size_bytes ? ` (${(launcher.size_bytes / 1024 / 1024).toFixed(1)} MB)` : "";
-        apkMeta.textContent = `Package ${launcher.package || "com.cielodeloro.guestwelcome"}${mb}`;
+        apkMeta.textContent = `Package ${launcher.package || "com.aatomhome.guestwelcome"}${mb}`;
       } else {
         apkMeta.textContent = "APK not bundled — rebuild hub image with guest launcher";
       }

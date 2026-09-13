@@ -1,4 +1,4 @@
-.class Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService$ReturnRunnable;
+.class Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService$ReturnRunnable;
 .super Ljava/lang/Object;
 .source "WelcomeAccessibilityService.java"
 
@@ -7,14 +7,14 @@
 
 
 # instance fields
-.field final synthetic this$0:Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;
+.field final synthetic this$0:Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;
 
 
 # direct methods
-.method constructor <init>(Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;)V
+.method constructor <init>(Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;)V
     .locals 0
 
-    iput-object p1, p0, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService$ReturnRunnable;->this$0:Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;
+    iput-object p1, p0, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService$ReturnRunnable;->this$0:Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
 
@@ -26,11 +26,11 @@
 .method public run()V
     .locals 2
 
-    iget-object v0, p0, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService$ReturnRunnable;->this$0:Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;
+    iget-object v0, p0, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService$ReturnRunnable;->this$0:Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;
 
-    sget-object v1, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->lastPackage:Ljava/lang/String;
+    sget-object v1, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->lastPackage:Ljava/lang/String;
 
-    invoke-static {v0, v1}, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->isAppStillForeground(Landroid/content/Context;Ljava/lang/String;)Z
+    invoke-static {v0, v1}, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->isAppStillForeground(Landroid/content/Context;Ljava/lang/String;)Z
 
     move-result v1
 
@@ -39,7 +39,7 @@
     return-void
 
     :cond_0
-    invoke-virtual {v0}, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->launchWelcome()V
+    invoke-virtual {v0}, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->launchWelcome()V
 
     return-void
 .end method

@@ -161,6 +161,20 @@ async def ensure_meta_for_device(device_id: int) -> dict[str, Any]:
     return await upsert_meta(device_id)
 
 
+async def find_by_fingerprint(device_fingerprint: str) -> dict[str, Any] | None:
+    fp = (device_fingerprint or "").strip()
+    if not fp:
+        return None
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM aatomhome_device_meta WHERE device_fingerprint = ?",
+            (fp,),
+        ) as cur:
+            row = await cur.fetchone()
+            return dict(row) if row else None
+
+
 async def find_by_claim_code(claim_code: str) -> dict[str, Any] | None:
     code = (claim_code or "").strip().upper()
     if not code:

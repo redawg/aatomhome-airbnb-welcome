@@ -15,9 +15,9 @@ PATCHES="${GUEST_LAUNCHER_PATCHES:-$ROOT/guest-launcher/patches}"
 if [[ -n "${HUB_GUEST_URL:-}" ]]; then
   HUB_URL="$HUB_GUEST_URL"
 elif [[ -n "${HUB_PUBLIC_URL:-}" ]]; then
-  HUB_URL="${HUB_PUBLIC_URL%/}/guest/"
+  HUB_URL="${HUB_PUBLIC_URL%/}/guest/onboard/"
 else
-  HUB_URL="http://192.168.1.100:8080/guest/"
+  HUB_URL="http://192.168.1.100:8080/guest/onboard/"
 fi
 WORKDIR="$(mktemp -d)"
 APKTOOL_JAR="${APKTOOL_JAR:-$WORKDIR/apktool.jar}"
@@ -55,7 +55,7 @@ manifest = Path(sys.argv[1])
 fragment = Path(sys.argv[2]).read_text()
 text = manifest.read_text()
 pattern = re.compile(
-    r'<activity\b[^>]*android:name="com\.cielodeloro\.guestwelcome\.MainActivity"[^>]*>.*?</activity>',
+    r'<activity\b[^>]*android:name="com\.(?:cielodeloro|aatomhome)\.guestwelcome\.MainActivity"[^>]*>.*?</activity>',
     re.DOTALL,
 )
 if not pattern.search(text):
@@ -87,7 +87,17 @@ PY
 mkdir -p "$WORKDIR/guest-apk/res/xml" "$WORKDIR/guest-apk/res/values"
 cp "$PATCHES/res/xml/welcome_accessibility.xml" "$WORKDIR/guest-apk/res/xml/welcome_accessibility.xml"
 STRINGS="$WORKDIR/guest-apk/res/values/strings.xml"
-cp "$PATCHES/smali/"*.smali "$WORKDIR/guest-apk/smali_classes3/com/cielodeloro/guestwelcome/"
+PKG_OLD="com.cielodeloro.guestwelcome"
+PKG_NEW="com.aatomhome.guestwelcome"
+for smali_root in "$WORKDIR/guest-apk/smali" "$WORKDIR/guest-apk/smali_classes2" "$WORKDIR/guest-apk/smali_classes3" "$WORKDIR/guest-apk/smali_classes4"; do
+  if [[ -d "$smali_root/$PKG_OLD" ]]; then
+    mkdir -p "$smali_root/$(dirname "$PKG_NEW")"
+    mv "$smali_root/$PKG_OLD" "$smali_root/$PKG_NEW"
+  fi
+done
+sed -i "s/$PKG_OLD/$PKG_NEW/g" "$MANIFEST"
+mkdir -p "$WORKDIR/guest-apk/smali_classes3/$PKG_NEW"
+cp "$PATCHES/smali/"*.smali "$WORKDIR/guest-apk/smali_classes3/$PKG_NEW/"
 
 apply_generic_apk_branding() {
   local smali_dir="$1"
@@ -138,14 +148,16 @@ if [[ -d "$PATCHES/res" ]]; then
   fi
 fi
 
-SMALI_DIR="$WORKDIR/guest-apk/smali_classes3/com/cielodeloro/guestwelcome"
+SMALI_DIR="$WORKDIR/guest-apk/smali_classes3/com/aatomhome/guestwelcome"
 apply_generic_apk_branding "$SMALI_DIR"
 if [[ -d "$SMALI_DIR" ]]; then
   find "$SMALI_DIR" -name '*.smali' -print0 | xargs -0 sed -i \
     -e "s|http://localhost:8080/guest/|${HUB_URL}|g" \
     -e "s|http://192.168.2.1:8080/guest/|${HUB_URL}|g" \
     -e "s|http://172.18.1.137:8080/guest/|${HUB_URL}|g" \
+    -e "s|http://172.16.1.36:18080/guest/onboard/|${HUB_URL}|g" \
     -e "s|http://172.16.1.36:18080/guest/|${HUB_URL}|g" \
+    -e "s|http://192.168.1.100:8080/guest/onboard/|${HUB_URL}|g" \
     -e "s|http://192.168.1.100:8080/guest/|${HUB_URL}|g"
 fi
 

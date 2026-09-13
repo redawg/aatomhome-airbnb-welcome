@@ -1,4 +1,4 @@
-package com.cielodeloro.guestwelcome;
+package com.aatomhome.guestwelcome;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;

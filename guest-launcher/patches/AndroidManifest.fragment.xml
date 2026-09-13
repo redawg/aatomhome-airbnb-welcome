@@ -1,5 +1,5 @@
 <!-- Insert inside <application> in AndroidManifest.xml -->
-        <activity android:banner="@drawable/tv_banner" android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize" android:exported="true" android:icon="@mipmap/ic_launcher" android:launchMode="singleTask" android:logo="@drawable/tv_banner" android:name="com.cielodeloro.guestwelcome.MainActivity" android:roundIcon="@mipmap/ic_launcher_round" android:screenOrientation="landscape" android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+        <activity android:banner="@drawable/tv_banner" android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize" android:exported="true" android:icon="@mipmap/ic_launcher" android:launchMode="singleTask" android:logo="@drawable/tv_banner" android:name="com.aatomhome.guestwelcome.MainActivity" android:roundIcon="@mipmap/ic_launcher_round" android:screenOrientation="landscape" android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -12,7 +12,7 @@
             </intent-filter>
         </activity>
         <receiver
-            android:name="com.cielodeloro.guestwelcome.BootReceiver"
+            android:name="com.aatomhome.guestwelcome.BootReceiver"
             android:directBootAware="true"
             android:enabled="true"
             android:exported="true">
@@ -22,7 +22,7 @@
             </intent-filter>
         </receiver>
         <service
-            android:name="com.cielodeloro.guestwelcome.WelcomeAccessibilityService"
+            android:name="com.aatomhome.guestwelcome.WelcomeAccessibilityService"
             android:exported="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
@@ -33,5 +33,5 @@
                 android:resource="@xml/welcome_accessibility"/>
         </service>
         <service
-            android:name="com.cielodeloro.guestwelcome.TvAgentService"
+            android:name="com.aatomhome.guestwelcome.TvAgentService"
             android:exported="false"/>

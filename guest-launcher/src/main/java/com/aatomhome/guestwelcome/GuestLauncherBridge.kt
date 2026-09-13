@@ -1,4 +1,4 @@
-package com.cielodeloro.guestwelcome
+package com.aatomhome.guestwelcome
 
 import android.app.Activity
 import android.content.Context

@@ -16,6 +16,11 @@ from guest_launcher import (
 from ops_logging import append_message, log_op_end, log_op_start, operation_id, step
 
 from . import store
+from .launcher_constants import (
+    GUEST_LAUNCHER_PACKAGE,
+    LEGACY_GUEST_LAUNCHER_PACKAGES,
+    onboard_page_url,
+)
 from .tv_agent_ws import hub_public_url
 
 logger = logging.getLogger("aatomhome.deploy")
@@ -45,7 +50,7 @@ async def deploy_launcher(
     launch_welcome: bool = True,
     force_reinstall: bool = True,
     start_agent: bool = True,
-    auto_claim: bool = True,
+    auto_claim: bool = False,
 ) -> dict[str, Any]:
     """
     Install or update the bundled guest launcher APK on a connected TV.
@@ -81,6 +86,23 @@ async def deploy_launcher(
     hub = (hub_url or hub_public_url()).rstrip("/")
     user_id = device.get("owner_user_id") or 0
     steps: list[dict[str, Any]] = []
+
+    for legacy_pkg in LEGACY_GUEST_LAUNCHER_PACKAGES:
+        if legacy_pkg == GUEST_LAUNCHER_PACKAGE:
+            continue
+        legacy_check = await adb.shell(serial, f"pm path --user {user_id} {legacy_pkg}")
+        if legacy_pkg not in (legacy_check.stdout or ""):
+            continue
+        append_message(messages, f"Removing legacy launcher {legacy_pkg}…")
+        legacy_rm = await adb.shell(serial, f"pm uninstall --user {user_id} {legacy_pkg}")
+        legacy_step = step(
+            "uninstall_legacy_launcher",
+            legacy_rm.ok,
+            legacy_rm.text() or f"Uninstalled {legacy_pkg}",
+            package=legacy_pkg,
+        )
+        steps.append(legacy_step)
+        append_message(messages, legacy_step["message"])
 
     status_before = await get_launcher_status(serial, user_id)
     if force_reinstall or not status_before.get("installed"):
@@ -152,10 +174,16 @@ async def deploy_launcher(
 
     launch: dict[str, Any]
     if launch_welcome:
-        append_message(messages, f"Opening welcome page at {guest_page_url(hub)}…")
-        launch = await launch_guest_welcome(serial, user_id, hub, force=True)
-        steps.append({**launch, "action": launch.get("action") or "launch_welcome"})
-        append_message(messages, launch.get("message") or ("Welcome opened" if launch.get("ok") else "Launch failed"))
+        onboard_url = onboard_page_url(hub)
+        append_message(messages, f"Opening TV setup at {onboard_url}…")
+        launch = await launch_guest_welcome(
+            serial, user_id, hub, force=True, page_url=onboard_url
+        )
+        steps.append({**launch, "action": launch.get("action") or "launch_onboard"})
+        append_message(
+            messages,
+            launch.get("message") or ("Setup screen opened" if launch.get("ok") else "Launch failed"),
+        )
     else:
         launch = {"ok": True, "skipped": True, "action": "launch_welcome"}
         steps.append(launch)
@@ -210,6 +238,7 @@ async def deploy_launcher(
         "serial": serial,
         "hub_url": hub,
         "guest_page_url": guest_page_url(hub),
+        "onboard_page_url": onboard_page_url(hub),
         "launcher": status,
         "apk_package": GUEST_LAUNCHER_PACKAGE,
         "steps": steps,

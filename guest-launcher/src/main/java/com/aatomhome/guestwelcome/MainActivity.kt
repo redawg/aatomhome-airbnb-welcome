@@ -1,4 +1,4 @@
-package com.cielodeloro.guestwelcome
+package com.aatomhome.guestwelcome
 
 import android.content.Intent
 import android.graphics.Typeface

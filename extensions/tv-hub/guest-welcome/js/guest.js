@@ -1757,9 +1757,46 @@ document.addEventListener("keydown", e => {
   }
 }, true);
 
-updateClock();
-setInterval(updateClock, 30000);
-loadConfig();
+function loadScriptOnce(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[data-src="${src}"]`)) {
+      resolve();
+      return;
+    }
+    const el = document.createElement("script");
+    el.src = src;
+    el.dataset.src = src;
+    el.onload = () => resolve();
+    el.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(el);
+  });
+}
+
+async function bootGuestWelcome() {
+  if (!HUB_PREVIEW) {
+    try {
+      await loadScriptOnce("/guest/js/claim-store.js");
+      await loadScriptOnce("/guest/js/tv-agent-poll.js");
+      const hub = hubBase();
+      if (window.AatomClaimStore && !window.AatomClaimStore.isClaimed(hub)) {
+        window.location.replace(`${hub}/guest/onboard/`);
+        return;
+      }
+      const claim = window.AatomClaimStore?.loadClaim(hub);
+      if (claim?.device_id && window.AatomTvAgent) {
+        window.AatomTvAgent.startTvAgentPoll(claim.device_id, window.AatomClaimStore.getFingerprint());
+      }
+    } catch (_) {
+      /* offline — show cached welcome if any */
+    }
+  }
+
+  updateClock();
+  setInterval(updateClock, 30000);
+  loadConfig();
+}
+
+bootGuestWelcome();
 
 async function checkForHubUpdates() {
   try {

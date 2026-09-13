@@ -36,7 +36,7 @@ export ENV_FILE
 
 APK_SRC="${GUEST_LAUNCHER_APK:-$ROOT/guest-launcher/releases/aatomhome-guest-welcome.apk}"
 [[ "$APK_SRC" != /* ]] && APK_SRC="$ROOT/$APK_SRC"
-APK_DEST="$ROOT/tv-hub/guest-launcher/cielodeloro-guestwelcome.apk"
+APK_DEST="$ROOT/tv-hub/guest-launcher/aatomhome-guest-welcome.apk"
 mkdir -p "$(dirname "$APK_DEST")"
 if [[ "${PATCH_APK_HUB_URL:-1}" == "1" ]]; then
   "$ROOT/scripts/patch-apk-hub-url.sh"

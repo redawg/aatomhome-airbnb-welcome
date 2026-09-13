@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1, viewport-fit=cover">
+  <title>Connect TV — Guest Welcome</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/guest/css/guest.css?v=20260913a">
+  <link rel="stylesheet" href="/guest/onboard/onboard.css?v=20260913a">
+  <script src="/guest/hub-config.js"></script>
+  <script src="/guest/js/claim-store.js?v=20260913a"></script>
+  <script src="/guest/js/tv-agent-poll.js?v=20260913a"></script>
+</head>
+<body>
+  <div class="onboard-scene" id="onboardScene">
+    <div class="onboard-card">
+      <p class="onboard-eyebrow">Guest Welcome</p>
+      <h1 class="onboard-title" id="onboardTitle">Connect this TV to the hub</h1>
+      <p class="onboard-lead" id="onboardLead">
+        Enter the room code from the property hub setup screen. This links the TV to your room
+        and Home Assistant controls before the welcome screen appears.
+      </p>
+
+      <div class="onboard-field">
+        <label class="onboard-label" for="roomCode">Room code</label>
+        <input
+          type="text"
+          id="roomCode"
+          class="onboard-input focusable"
+          maxlength="12"
+          autocomplete="off"
+          inputmode="text"
+          placeholder="e.g. ZO3UPU"
+          tabindex="0"
+        />
+      </div>
+
+      <div class="onboard-actions">
+        <button type="button" class="onboard-btn onboard-btn--primary focusable" id="btnConnect" tabindex="0">
+          Connect &amp; sync
+        </button>
+        <button type="button" class="onboard-btn focusable" id="btnSelfRegister" tabindex="0">
+          New TV — register here
+        </button>
+      </div>
+
+      <p class="onboard-status" id="status" role="status" aria-live="polite"></p>
+
+      <p class="onboard-meta" id="hubMeta">
+        Hub: <code id="hubUrlLabel">—</code><br>
+        Device ID: <code id="deviceIdLabel">—</code>
+      </p>
+    </div>
+  </div>
+  <script src="/guest/onboard/onboard.js?v=20260913a"></script>
+</body>
+</html>

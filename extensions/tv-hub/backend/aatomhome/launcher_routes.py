@@ -14,15 +14,18 @@ import qrcode
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, Response
 
+from .launcher_constants import (
+    GUEST_LAUNCHER_APK_DEFAULT,
+    GUEST_LAUNCHER_APK_FILENAME,
+    GUEST_LAUNCHER_PACKAGE,
+    onboard_page_url,
+)
 from .tv_agent_ws import hub_public_url
 
 logger = logging.getLogger("aatomhome.launcher")
 router = APIRouter(tags=["aatomhome-launcher"])
 
-GUEST_LAUNCHER_APK = Path(
-    os.environ.get("GUEST_LAUNCHER_APK", "/app/guest-launcher/cielodeloro-guestwelcome.apk"),
-)
-GUEST_LAUNCHER_PACKAGE = "com.cielodeloro.guestwelcome"
+GUEST_LAUNCHER_APK = Path(os.environ.get("GUEST_LAUNCHER_APK", GUEST_LAUNCHER_APK_DEFAULT))
 
 
 def _apk_info() -> dict[str, Any]:
@@ -37,14 +40,14 @@ def _apk_info() -> dict[str, Any]:
         "available": True,
         "path": str(GUEST_LAUNCHER_APK),
         "package": GUEST_LAUNCHER_PACKAGE,
-        "filename": "aatomhome-guest-welcome.apk",
+        "filename": GUEST_LAUNCHER_APK_FILENAME,
         "size_bytes": len(data),
         "sha256": hashlib.sha256(data).hexdigest(),
     }
 
 
 def hub_onboarding_url() -> str:
-    return hub_public_url().rstrip("/")
+    return onboard_page_url(hub_public_url())
 
 
 def make_hub_qr_png(url: str | None = None) -> bytes:
@@ -62,16 +65,18 @@ def make_hub_qr_png(url: str | None = None) -> bytes:
 async def guest_launcher_info() -> dict[str, Any]:
     hub = hub_onboarding_url()
     info = _apk_info()
+    base = hub_public_url().rstrip("/")
     return {
-        "hub_url": hub,
-        "guest_url": f"{hub}/guest/",
-        "download_url": f"{hub}/api/aatomhome/guest-launcher/apk",
+        "hub_url": base,
+        "guest_url": f"{base}/guest/",
+        "onboard_url": hub,
+        "download_url": f"{base}/api/aatomhome/guest-launcher/apk",
         "package": GUEST_LAUNCHER_PACKAGE,
         "onboarding": {
             "manual_url_entry": hub,
             "qr_payload": hub,
-            "claim_api": f"{hub}/api/registry/claim-by-code",
-            "self_register_api": f"{hub}/api/registry/self-register",
+            "claim_api": f"{base}/api/registry/claim-by-code",
+            "self_register_api": f"{base}/api/registry/self-register",
         },
         **info,
     }

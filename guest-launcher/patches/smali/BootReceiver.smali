@@ -1,4 +1,4 @@
-.class public Lcom/cielodeloro/guestwelcome/BootReceiver;
+.class public Lcom/aatomhome/guestwelcome/BootReceiver;
 .super Landroid/content/BroadcastReceiver;
 .source "BootReceiver.java"
 
@@ -57,7 +57,7 @@
     :cond_3
     new-instance p2, Landroid/content/Intent;
 
-    const-class v0, Lcom/cielodeloro/guestwelcome/MainActivity;
+    const-class v0, Lcom/aatomhome/guestwelcome/MainActivity;
 
     invoke-direct {p2, p1, v0}, Landroid/content/Intent;-><init>(Landroid/content/Context;Ljava/lang/Class;)V
 

@@ -9,7 +9,7 @@ Pre-built APK that sets **Guest Welcome** as the TV home app and loads the hub w
 | [`releases/aatomhome-guest-welcome.apk`](releases/aatomhome-guest-welcome.apk) | Signed debug keystore; ready to sideload or install via hub ADB |
 | [`releases/aatomhome-guest-welcome.apk.sha256`](releases/aatomhome-guest-welcome.apk.sha256) | SHA-256 checksum |
 
-**Package:** `com.cielodeloro.guestwelcome`  
+**Package:** `com.aatomhome.guestwelcome`  
 **Default hub URL baked in:** `http://192.168.2.1:8080/guest/` — patch at deploy time with [`../scripts/patch-apk-hub-url.sh`](../scripts/patch-apk-hub-url.sh) and `HUB_PUBLIC_URL`.
 
 **Multi-property / claim flow (source):** `HubConfig.kt` persists `hub_url` per TV; first boot shows room-code claim (`POST /api/registry/claim-by-code`) or self-register (`POST /api/registry/self-register`). `TvAgentService` polls the hub for guest ops when inbound ADB is unavailable.
@@ -51,7 +51,7 @@ Hub **Setup → Create room slot** → install APK on TV → hub URL + room code
 
 ```bash
 adb install -r releases/aatomhome-guest-welcome.apk
-adb shell cmd package set-home-activity com.cielodeloro.guestwelcome/.MainActivity
+adb shell cmd package set-home-activity com.aatomhome.guestwelcome/.MainActivity
 ```
 
 On first Home press, choose **Guest Welcome** → **Always**.

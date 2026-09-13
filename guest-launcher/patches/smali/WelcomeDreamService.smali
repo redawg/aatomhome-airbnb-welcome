@@ -1,4 +1,4 @@
-.class public Lcom/cielodeloro/guestwelcome/WelcomeDreamService;
+.class public Lcom/aatomhome/guestwelcome/WelcomeDreamService;
 .super Landroid/service/dreams/DreamService;
 .source "WelcomeDreamService.java"
 
@@ -99,9 +99,9 @@
 
     invoke-virtual {v4, v2}, Landroid/widget/Button;->setTextColor(I)V
 
-    new-instance v2, Lcom/cielodeloro/guestwelcome/WelcomeDreamService$1;
+    new-instance v2, Lcom/aatomhome/guestwelcome/WelcomeDreamService$1;
 
-    invoke-direct {v2, p0}, Lcom/cielodeloro/guestwelcome/WelcomeDreamService$1;-><init>(Lcom/cielodeloro/guestwelcome/WelcomeDreamService;)V
+    invoke-direct {v2, p0}, Lcom/aatomhome/guestwelcome/WelcomeDreamService$1;-><init>(Lcom/aatomhome/guestwelcome/WelcomeDreamService;)V
 
     invoke-virtual {v4, v2}, Landroid/widget/Button;->setOnClickListener(Landroid/view/View$OnClickListener;)V
 
@@ -111,7 +111,7 @@
 
     invoke-virtual {v0, v4}, Landroid/widget/LinearLayout;->addView(Landroid/view/View;)V
 
-    invoke-virtual {p0, v0}, Lcom/cielodeloro/guestwelcome/WelcomeDreamService;->setContentView(Landroid/view/View;)V
+    invoke-virtual {p0, v0}, Lcom/aatomhome/guestwelcome/WelcomeDreamService;->setContentView(Landroid/view/View;)V
 
     new-instance v0, Landroid/os/Handler;
 
@@ -121,9 +121,9 @@
 
     invoke-direct {v0, v1}, Landroid/os/Handler;-><init>(Landroid/os/Looper;)V
 
-    new-instance v1, Lcom/cielodeloro/guestwelcome/WelcomeDreamService$2;
+    new-instance v1, Lcom/aatomhome/guestwelcome/WelcomeDreamService$2;
 
-    invoke-direct {v1, p0}, Lcom/cielodeloro/guestwelcome/WelcomeDreamService$2;-><init>(Lcom/cielodeloro/guestwelcome/WelcomeDreamService;)V
+    invoke-direct {v1, p0}, Lcom/aatomhome/guestwelcome/WelcomeDreamService$2;-><init>(Lcom/aatomhome/guestwelcome/WelcomeDreamService;)V
 
     const-wide v2, 0x6ddd00
 
@@ -137,7 +137,7 @@
 
     new-instance v0, Landroid/content/Intent;
 
-    const-class v1, Lcom/cielodeloro/guestwelcome/MainActivity;
+    const-class v1, Lcom/aatomhome/guestwelcome/MainActivity;
 
     invoke-direct {v0, p0, v1}, Landroid/content/Intent;-><init>(Landroid/content/Context;Ljava/lang/Class;)V
 
@@ -145,9 +145,9 @@
 
     invoke-virtual {v0, v1}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
 
-    invoke-virtual {p0, v0}, Lcom/cielodeloro/guestwelcome/WelcomeDreamService;->startActivity(Landroid/content/Intent;)V
+    invoke-virtual {p0, v0}, Lcom/aatomhome/guestwelcome/WelcomeDreamService;->startActivity(Landroid/content/Intent;)V
 
-    invoke-virtual {p0}, Lcom/cielodeloro/guestwelcome/WelcomeDreamService;->finish()V
+    invoke-virtual {p0}, Lcom/aatomhome/guestwelcome/WelcomeDreamService;->finish()V
 
     return-void
 .end method

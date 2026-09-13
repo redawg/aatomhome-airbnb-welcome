@@ -1,4 +1,4 @@
-.class public final Lcom/cielodeloro/guestwelcome/GuestLauncherBridge;
+.class public final Lcom/aatomhome/guestwelcome/GuestLauncherBridge;
 .super Ljava/lang/Object;
 .source "GuestLauncherBridge.kt"
 
@@ -13,7 +13,7 @@
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
 
-    iput-object p1, p0, Lcom/cielodeloro/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
+    iput-object p1, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
 
     return-void
 .end method
@@ -26,7 +26,7 @@
     .end annotation
 
     :try_start_0
-    iget-object v0, p0, Lcom/cielodeloro/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
+    iget-object v0, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
 
     invoke-virtual {v0}, Landroid/content/Context;->getPackageManager()Landroid/content/pm/PackageManager;
 
@@ -74,7 +74,7 @@
     invoke-virtual {v0, v1}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
 
     :try_start_0
-    iget-object v1, p0, Lcom/cielodeloro/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
+    iget-object v1, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
 
     invoke-virtual {v1, v0}, Landroid/content/Context;->startActivity(Landroid/content/Intent;)V
     :try_end_0
@@ -97,12 +97,12 @@
 
     invoke-virtual {v0, v1}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
 
-    iget-object v1, p0, Lcom/cielodeloro/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
+    iget-object v1, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
 
     invoke-virtual {v1, v0}, Landroid/content/Context;->startActivity(Landroid/content/Intent;)V
 
     :goto_finish
-    iget-object v0, p0, Lcom/cielodeloro/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
+    iget-object v0, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
 
     instance-of v1, v0, Landroid/app/Activity;
 
@@ -121,7 +121,7 @@
     .annotation runtime Landroid/webkit/JavascriptInterface;
     .end annotation
 
-    iget-object v0, p0, Lcom/cielodeloro/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
+    iget-object v0, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
 
     invoke-virtual {v0}, Landroid/content/Context;->getPackageManager()Landroid/content/pm/PackageManager;
 
@@ -137,14 +137,14 @@
 
     invoke-virtual {v0, v1}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
 
-    iget-object v1, p0, Lcom/cielodeloro/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
+    iget-object v1, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
 
     invoke-virtual {v1, v0}, Landroid/content/Context;->startActivity(Landroid/content/Intent;)V
 
     goto :goto_0
 
     :cond_0
-    iget-object v1, p0, Lcom/cielodeloro/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
+    iget-object v1, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
 
     new-instance v2, Ljava/lang/StringBuilder;
 
@@ -181,7 +181,7 @@
     .annotation runtime Landroid/webkit/JavascriptInterface;
     .end annotation
 
-    invoke-virtual {p0}, Lcom/cielodeloro/guestwelcome/GuestLauncherBridge;->closeToGoogleTv()V
+    invoke-virtual {p0}, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->closeToGoogleTv()V
 
     return-void
 .end method

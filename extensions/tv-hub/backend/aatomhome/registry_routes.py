@@ -47,7 +47,7 @@ class DeployLauncherBody(BaseModel):
     launch_welcome: bool = True
     force_reinstall: bool = True
     start_agent: bool = True
-    auto_claim: bool = True
+    auto_claim: bool = False
 
 
 class DeployLauncherBulkBody(BaseModel):
@@ -55,7 +55,7 @@ class DeployLauncherBulkBody(BaseModel):
     launch_welcome: bool = True
     force_reinstall: bool = True
     start_agent: bool = True
-    auto_claim: bool = True
+    auto_claim: bool = False
     online_only: bool = True
 
 
@@ -218,6 +218,25 @@ async def put_room_config(device_id: int, body: RoomConfigBody) -> dict[str, Any
         raise HTTPException(404, "Device not found")
     merged = await store.set_room_config(device_id, body.model_dump())
     return {"device_id": device_id, "room_config": merged, "ok": True}
+
+
+@router.get("/api/registry/device-status")
+async def device_status(fingerprint: str) -> dict[str, Any]:
+    """TV onboarding — check whether this device fingerprint is already claimed."""
+    meta = await store.find_by_fingerprint(fingerprint)
+    if not meta:
+        return {"claimed": False}
+    device_id = int(meta["device_id"])
+    status = meta.get("registration_status") or "active"
+    return {
+        "claimed": status in ("claimed", "active"),
+        "device_id": device_id,
+        "claim_code": meta.get("claim_code"),
+        "registration_status": status,
+        "room_config": await store.get_room_config(device_id),
+        "agent_connected": bool(meta.get("agent_connected")),
+        "hub_public_url": hub_public_url(),
+    }
 
 
 @router.post("/api/registry/claim-by-code")

@@ -1,4 +1,4 @@
-.class public Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;
+.class public Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;
 .super Landroid/accessibilityservice/AccessibilityService;
 .source "WelcomeAccessibilityService.java"
 
@@ -8,7 +8,7 @@
 
 .field private static final RETURN_DELAY_MS:J = 0x1f40L
 
-.field private static final WELCOME_PKG:Ljava/lang/String; = "com.cielodeloro.guestwelcome"
+.field private static final WELCOME_PKG:Ljava/lang/String; = "com.aatomhome.guestwelcome"
 
 .field static lastPackage:Ljava/lang/String;
 
@@ -29,11 +29,11 @@
 .method private cancelReturn()V
     .locals 2
 
-    sget-object v0, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->returnHandler:Landroid/os/Handler;
+    sget-object v0, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->returnHandler:Landroid/os/Handler;
 
     if-eqz v0, :cond_0
 
-    sget-object v1, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->returnRunnable:Ljava/lang/Runnable;
+    sget-object v1, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->returnRunnable:Ljava/lang/Runnable;
 
     if-eqz v1, :cond_0
 
@@ -46,7 +46,7 @@
 .method private ensureHandler()V
     .locals 2
 
-    sget-object v0, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->returnHandler:Landroid/os/Handler;
+    sget-object v0, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->returnHandler:Landroid/os/Handler;
 
     if-nez v0, :cond_0
 
@@ -58,18 +58,18 @@
 
     invoke-direct {v0, v1}, Landroid/os/Handler;-><init>(Landroid/os/Looper;)V
 
-    sput-object v0, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->returnHandler:Landroid/os/Handler;
+    sput-object v0, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->returnHandler:Landroid/os/Handler;
 
     :cond_0
-    sget-object v0, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->returnRunnable:Ljava/lang/Runnable;
+    sget-object v0, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->returnRunnable:Ljava/lang/Runnable;
 
     if-nez v0, :cond_1
 
-    new-instance v0, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService$ReturnRunnable;
+    new-instance v0, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService$ReturnRunnable;
 
-    invoke-direct {v0, p0}, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService$ReturnRunnable;-><init>(Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;)V
+    invoke-direct {v0, p0}, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService$ReturnRunnable;-><init>(Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;)V
 
-    sput-object v0, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->returnRunnable:Ljava/lang/Runnable;
+    sput-object v0, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->returnRunnable:Ljava/lang/Runnable;
 
     :cond_1
     return-void
@@ -259,13 +259,13 @@
 .method private scheduleReturn()V
     .locals 4
 
-    invoke-direct {p0}, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->ensureHandler()V
+    invoke-direct {p0}, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->ensureHandler()V
 
-    invoke-direct {p0}, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->cancelReturn()V
+    invoke-direct {p0}, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->cancelReturn()V
 
-    sget-object v0, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->returnHandler:Landroid/os/Handler;
+    sget-object v0, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->returnHandler:Landroid/os/Handler;
 
-    sget-object v1, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->returnRunnable:Ljava/lang/Runnable;
+    sget-object v1, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->returnRunnable:Ljava/lang/Runnable;
 
     const-wide/16 v2, 0x1f40
 
@@ -291,7 +291,7 @@
     return v0
 
     :cond_1
-    const-string v0, "com.cielodeloro.guestwelcome"
+    const-string v0, "com.aatomhome.guestwelcome"
 
     invoke-virtual {v0, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
@@ -317,7 +317,7 @@
     return v0
 
     :cond_3
-    invoke-direct {p0, p1}, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->isIgnorable(Ljava/lang/String;)Z
+    invoke-direct {p0, p1}, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->isIgnorable(Ljava/lang/String;)Z
 
     move-result v0
 
@@ -340,7 +340,7 @@
 
     new-instance v0, Landroid/content/Intent;
 
-    const-class v1, Lcom/cielodeloro/guestwelcome/MainActivity;
+    const-class v1, Lcom/aatomhome/guestwelcome/MainActivity;
 
     invoke-direct {v0, p0, v1}, Landroid/content/Intent;-><init>(Landroid/content/Context;Ljava/lang/Class;)V
 
@@ -348,7 +348,7 @@
 
     invoke-virtual {v0, v1}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
 
-    invoke-virtual {p0, v0}, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->startActivity(Landroid/content/Intent;)V
+    invoke-virtual {p0, v0}, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->startActivity(Landroid/content/Intent;)V
 
     return-void
 .end method
@@ -385,7 +385,7 @@
 
     move-result-object v0
 
-    const-string v1, "com.cielodeloro.guestwelcome"
+    const-string v1, "com.aatomhome.guestwelcome"
 
     invoke-virtual {v1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
@@ -393,9 +393,9 @@
 
     if-eqz v1, :cond_3
 
-    invoke-direct {p0}, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->cancelReturn()V
+    invoke-direct {p0}, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->cancelReturn()V
 
-    sput-object v0, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->lastPackage:Ljava/lang/String;
+    sput-object v0, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->lastPackage:Ljava/lang/String;
 
     return-void
 
@@ -408,33 +408,33 @@
 
     if-eqz v1, :cond_5
 
-    sget-object v1, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->lastPackage:Ljava/lang/String;
+    sget-object v1, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->lastPackage:Ljava/lang/String;
 
-    invoke-direct {p0, v1}, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->shouldReturnFrom(Ljava/lang/String;)Z
+    invoke-direct {p0, v1}, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->shouldReturnFrom(Ljava/lang/String;)Z
 
     move-result v1
 
     if-eqz v1, :cond_4
 
-    sget-object v1, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->lastPackage:Ljava/lang/String;
+    sget-object v1, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->lastPackage:Ljava/lang/String;
 
-    invoke-static {p0, v1}, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->isAppStillForeground(Landroid/content/Context;Ljava/lang/String;)Z
+    invoke-static {p0, v1}, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->isAppStillForeground(Landroid/content/Context;Ljava/lang/String;)Z
 
     move-result v1
 
     if-nez v1, :cond_4
 
-    invoke-direct {p0}, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->scheduleReturn()V
+    invoke-direct {p0}, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->scheduleReturn()V
 
     :cond_4
-    sput-object v0, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->lastPackage:Ljava/lang/String;
+    sput-object v0, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->lastPackage:Ljava/lang/String;
 
     return-void
 
     :cond_5
-    invoke-direct {p0}, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->cancelReturn()V
+    invoke-direct {p0}, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->cancelReturn()V
 
-    sput-object v0, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->lastPackage:Ljava/lang/String;
+    sput-object v0, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->lastPackage:Ljava/lang/String;
 
     return-void
 .end method
@@ -442,7 +442,7 @@
 .method public onInterrupt()V
     .locals 0
 
-    invoke-direct {p0}, Lcom/cielodeloro/guestwelcome/WelcomeAccessibilityService;->cancelReturn()V
+    invoke-direct {p0}, Lcom/aatomhome/guestwelcome/WelcomeAccessibilityService;->cancelReturn()V
 
     return-void
 .end method
