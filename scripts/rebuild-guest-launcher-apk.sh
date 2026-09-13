@@ -42,6 +42,10 @@ curl -fsSL -o "$APKTOOL_JAR" \
 java -jar "$APKTOOL_JAR" d -f "$BASE_APK" -o "$WORKDIR/guest-apk"
 
 MANIFEST="$WORKDIR/guest-apk/AndroidManifest.xml"
+sed -i \
+  -e 's/package="com\.cielodeloro\.guestwelcome"/package="com.aatomhome.guestwelcome"/' \
+  -e 's/com\.cielodeloro\.guestwelcome/com.aatomhome.guestwelcome/g' \
+  "$MANIFEST"
 if ! grep -q 'RECEIVE_BOOT_COMPLETED' "$MANIFEST"; then
   sed -i 's|<uses-permission android:name="android.permission.INTERNET"/>|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>|' "$MANIFEST"
 fi
