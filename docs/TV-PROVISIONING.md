@@ -9,6 +9,8 @@ Onboard a **Google TV, Android TV, or Android TV device** to the Aatomhome welco
 
 Both paths end with the **guest launcher** (`com.cielodeloro.guestwelcome`) loading the welcome page from the hub (`/guest/`).
 
+The welcome screen does **not** ship static copy on the TV. It loads live JSON from **`GET /api/guest-welcome/public`** on the **same hub** the launcher claimed (via `/guest/hub-config.js`). Content comes from **Setup → Guest Experience** for the TV’s property (matched by registered TV IP, or hub **active property** when previewing in the admin UI).
+
 ---
 
 ## Architecture
@@ -39,16 +41,31 @@ Both paths end with the **guest launcher** (`com.cielodeloro.guestwelcome`) load
 
 ---
 
+## Guest Google account (main TV profile)
+
+Streaming apps, allow-list sync, and **Clear streaming logins** all target the TV **main profile** (Android user **0** — owner / primary user on Google TV and Android TV). Configure the account per property in hub **Setup → Hub → TV Google account**.
+
+| Field | What to use |
+|-------|-------------|
+| **Google account** | Property guest account from Setup (e.g. `guest@example.com`) |
+| **Android profile** | **Main profile only** — not a child or restricted profile |
+| **When to sign in** | Before Path 2 push / streaming install; recommended before Path 1 claim if guests will use Netflix, Disney+, etc. |
+
+On the TV: **Settings → Accounts** → add or switch to the primary profile → sign in with the hub-configured email. The hub **Guest Experience** tab shows whether the selected TV has the expected account on the main profile.
+
+---
+
 ## Path 1 — Download app (recommended)
 
 **No developer options.** Staff prepares a room code on the hub; the TV installs the launcher and claims over HTTP.
 
 ### Staff (hub Setup)
 
-1. Open **Setup** → **Path 1 — Download app**.
-2. Click **+ Create room slot** → name the room (e.g. `Living room Shield`).
-3. Copy the **room code** shown (or select the slot → **Show room code**).
-4. Note for the TV:
+1. Open **Setup** → confirm **TV Google account** and **Guest TV sign-in** box (main profile · user 0).
+2. Open **Path 1 — Download app**.
+3. Click **+ Create room slot** → name the room (e.g. `Living room Shield`).
+4. Copy the **room code** shown (or select the slot → **Show room code**).
+5. Note for the TV:
    - **Hub URL:** `http://192.168.1.100:18080`
    - **APK:** `http://192.168.1.100:18080/api/aatomhome/guest-launcher/apk`
 
@@ -56,12 +73,13 @@ Both paths end with the **guest launcher** (`com.cielodeloro.guestwelcome`) load
 
 ### On the TV
 
-1. **Install unknown apps** — enable for your browser or [Downloader](https://play.google.com/store/apps/details?id=com.esaba.downloader).
-2. Open the APK URL in the TV browser or Downloader → install.
-3. Launch **Aatomhome / Guest Welcome**.
-4. **Hub URL:** `http://192.168.1.100:18080` (or scan QR on hub Setup).
-5. **Room code** from staff → **Claim on selected hub**.
-6. Welcome screen loads from the hub.
+1. **Main profile:** sign in with the property guest Google account from Setup (if guests will use streaming apps).
+2. **Install unknown apps** — enable for your browser or [Downloader](https://play.google.com/store/apps/details?id=com.esaba.downloader).
+3. Open the APK URL in the TV browser or Downloader → install.
+4. Launch **Aatomhome / Guest Welcome**.
+5. **Hub URL:** `http://192.168.1.100:18080` (or scan QR on hub Setup).
+6. **Room code** from staff → **Claim on selected hub**.
+7. Welcome screen loads from the hub.
 
 ### API (optional)
 
@@ -97,13 +115,17 @@ curl -s -X POST http://192.168.1.100:18080/api/registry/claim-by-code \
 2. **Developer options** → **USB debugging** + **Network debugging** → On.
 3. Approve **Allow USB debugging** when the hub connects (or use wireless pairing code).
 
-### 2. Register and connect (hub)
+### 2. Guest sign-in (TV)
+
+1. On the TV **main profile**, sign in with the **TV Google account** from hub Setup (see **Guest TV sign-in** on the Provision card).
+
+### 3. Register and connect (hub)
 
 1. **Setup** → **Path 2** → **Register for ADB** (name + TV IP).
 2. **Pair device** — pairing port + 6-digit code (if not paired at register).
 3. **TV Management** → select TV → **Connect** (status must be `device`, not `unauthorized`).
 
-### 3. Push welcome app (after Connect shows **device**)
+### 4. Push welcome app (after Connect shows **device**)
 
 1. **TV Management** → select the TV → **Push welcome app**
 2. After hub APK rebuild → **Update launcher APK** (or **Push to all online**)

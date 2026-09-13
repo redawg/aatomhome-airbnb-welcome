@@ -1,5 +1,6 @@
 """Guest Google TV account helpers via ADB — per-property account from hub config."""
 
+import logging
 import re
 
 from adb import (
@@ -16,6 +17,16 @@ from guest_account_resolve import (
     DEFAULT_GUEST_GOOGLE_ACCOUNT,
     resolve_guest_google_account,
 )
+from ops_logging import (
+    append_message,
+    format_package_line,
+    log_op_end,
+    log_op_start,
+    operation_id,
+    summarize_package_results,
+)
+
+logger = logging.getLogger("adb-tv-hub.streaming")
 
 # Legacy import name — default only; use resolve_guest_google_account() for property-aware checks.
 GUEST_GOOGLE_ACCOUNT = DEFAULT_GUEST_GOOGLE_ACCOUNT
@@ -27,8 +38,8 @@ async def list_users_detailed(serial: str) -> list[dict]:
     basic = {u["id"]: u for u in await list_users(serial)}
     result = await shell(serial, "dumpsys user")
     users: list[dict] = []
-    current_id: int | None = None
 
+    current_id: int | None = None
     for line in result.stdout.splitlines():
         m = re.search(r"UserInfo\{(\d+):([^:}]*):(\w+)\}", line)
         if m:
@@ -180,6 +191,15 @@ async def clear_streaming_logins(
     extra_packages: list[str] | None = None,
 ) -> dict:
     """Clear streaming app credentials on the main TV profile."""
+    op_id, started = log_op_start(
+        logger,
+        "clear_streaming_logins",
+        op_id=operation_id("clear"),
+        serial=serial,
+        user_ids=user_ids or [MAIN_USER_ID],
+    )
+    messages: list[str] = []
+
     if not user_ids:
         user_ids = [MAIN_USER_ID]
 
@@ -194,16 +214,22 @@ async def clear_streaming_logins(
             seen_catalog.add(pkg)
             packages_to_clear.append(pkg)
 
+    append_message(messages, f"Clear streaming logins on {serial} — {len(packages_to_clear)} catalog package(s)")
     cleared: list[dict] = []
     skipped: list[dict] = []
     errors: list[dict] = []
 
     for user_id in user_ids:
+        append_message(messages, f"Profile user_id={user_id}")
         seen_device_pkgs: set[str] = set()
         for pkg in packages_to_clear:
             device_pkg = await resolve_installed_package(serial, pkg, user_id)
             if not device_pkg:
-                skipped.append({"user_id": user_id, "package": pkg, "reason": "not installed"})
+                entry = {"user_id": user_id, "package": pkg, "reason": "not installed"}
+                skipped.append(entry)
+                line = format_package_line(entry)
+                append_message(messages, line)
+                logger.debug("[%s] %s", op_id, line)
                 continue
             if device_pkg in seen_device_pkgs:
                 continue
@@ -219,10 +245,14 @@ async def clear_streaming_logins(
                 "ok": ok,
                 "message": text,
             }
+            line = format_package_line(entry)
+            append_message(messages, line)
             if ok:
                 cleared.append(entry)
+                logger.info("[%s] cleared %s (user %s)", op_id, device_pkg, user_id)
             else:
                 errors.append(entry)
+                logger.warning("[%s] clear failed %s (user %s): %s", op_id, device_pkg, user_id, text.strip())
 
         for pkg in STREAMING_COMPANION_PACKAGES:
             if pkg in seen_device_pkgs:
@@ -237,16 +267,43 @@ async def clear_streaming_logins(
             text = result.text()
             ok = result.ok and "Success" in text
             entry = {"user_id": user_id, "package": pkg, "device_package": pkg, "ok": ok, "message": text}
+            line = format_package_line(entry)
+            append_message(messages, line)
             if ok:
                 cleared.append(entry)
+                logger.info("[%s] cleared companion %s (user %s)", op_id, pkg, user_id)
             else:
                 errors.append(entry)
+                logger.warning("[%s] companion clear failed %s: %s", op_id, pkg, text.strip())
 
+    summary = summarize_package_results(cleared, skipped, errors)
+    ok = not errors
+    note = (
+        f"Cleared {len(cleared)} streaming package(s). Each app will require a fresh sign-in."
+        if ok
+        else f"Cleared {len(cleared)} package(s); {len(errors)} failed — see messages."
+    )
+    append_message(messages, note)
+    duration_ms = log_op_end(
+        logger,
+        op_id,
+        "clear_streaming_logins",
+        ok,
+        started,
+        summary,
+        cleared=len(cleared),
+        skipped=len(skipped),
+        errors=len(errors),
+    )
     return {
-        "ok": not errors,
+        "ok": ok,
+        "operation_id": op_id,
+        "duration_ms": duration_ms,
         "user_ids": user_ids,
         "cleared": cleared,
         "skipped": skipped,
         "errors": errors,
-        "note": f"Cleared {len(cleared)} streaming package(s). Each app will require a fresh sign-in.",
+        "messages": messages,
+        "note": note,
+        "message": summary,
     }

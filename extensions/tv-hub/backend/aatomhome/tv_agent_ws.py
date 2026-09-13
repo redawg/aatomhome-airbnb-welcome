@@ -73,25 +73,48 @@ async def send_command(
     timeout: float = 45.0,
 ) -> dict[str, Any]:
     message = {"type": "command", "command": command, "payload": payload or {}}
+    logger.info(
+        "TV agent command device_id=%s command=%s transport=%s",
+        device_id,
+        command,
+        "websocket" if device_id in _sessions else "poll",
+    )
     async with _lock:
         session = _sessions.get(device_id)
     if session is not None:
         await session.websocket.send_text(json.dumps(message))
         try:
-            return await asyncio.wait_for(session.responses.get(), timeout=timeout)
+            result = await asyncio.wait_for(session.responses.get(), timeout=timeout)
+            logger.info(
+                "TV agent result device_id=%s command=%s ok=%s",
+                device_id,
+                command,
+                result.get("ok"),
+            )
+            return result
         except asyncio.TimeoutError:
+            logger.warning("TV agent timeout device_id=%s command=%s", device_id, command)
             return {"ok": False, "error": "agent_timeout"}
 
     cmd_q = await _command_queue(device_id)
     res_q = await _result_queue(device_id)
     await cmd_q.put(message)
     try:
-        return await asyncio.wait_for(res_q.get(), timeout=timeout)
+        result = await asyncio.wait_for(res_q.get(), timeout=timeout)
+        logger.info(
+            "TV agent poll result device_id=%s command=%s ok=%s",
+            device_id,
+            command,
+            result.get("ok"),
+        )
+        return result
     except asyncio.TimeoutError:
+        logger.warning("TV agent poll timeout device_id=%s command=%s", device_id, command)
         return {"ok": False, "error": "agent_timeout"}
 
 
 async def dispatch_clear_streaming(device_id: int) -> dict[str, Any]:
+    logger.debug("dispatch_clear_streaming device_id=%s", device_id)
     return await send_command(device_id, "clear_streaming_logins")
 
 

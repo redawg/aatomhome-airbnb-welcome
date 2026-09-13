@@ -368,6 +368,25 @@ function hubLogFromInstallReport(report, title = "Install", deviceName = null, d
   }
 }
 
+function hubLogPackageOutcomeList(label, items, {
+  deviceName = null,
+  deviceId = null,
+  category = "guest",
+  level = "info",
+} = {}) {
+  for (const item of items || []) {
+    const pkg = item.package || item.pkg || item.name;
+    const msg = item.message || item.reason || item.error || (item.ok === false ? "failed" : "ok");
+    hubLog({
+      level: item.ok === false ? "error" : (item.skipped ? "warn" : level),
+      category,
+      message: pkg ? `${label}: ${pkg} — ${msg}` : `${label}: ${msg}`,
+      deviceName: item.device_name || deviceName,
+      deviceId: item.device_id ?? deviceId,
+    });
+  }
+}
+
 function hubLogOperationResponse(action, response, {
   deviceName = null,
   deviceId = null,
@@ -377,7 +396,16 @@ function hubLogOperationResponse(action, response, {
   const cat = category || "system";
   const name = response.device_name || deviceName;
   const id = response.device_id ?? deviceId;
-  const summaryLevel = response.ok === false ? "error" : (response.failed ? "warn" : "success");
+  const hasFailures = Boolean(
+    response.failed
+    || (response.errors?.length)
+    || (response.results || []).some(item => item.ok === false && !item.skipped),
+  );
+  const summaryLevel = response.ok === false ? "error" : (hasFailures ? "warn" : "success");
+  const metaBits = [];
+  if (response.operation_id) metaBits.push(`op ${response.operation_id}`);
+  if (response.duration_ms != null) metaBits.push(`${response.duration_ms}ms`);
+  const meta = metaBits.length ? metaBits.join(" · ") : null;
 
   if (response.message || response.ok !== undefined) {
     hubLog({
@@ -386,7 +414,7 @@ function hubLogOperationResponse(action, response, {
       message: response.message || `${action} complete`,
       deviceName: name,
       deviceId: id,
-      details: response.note || null,
+      details: [meta, response.note].filter(Boolean).join(" — ") || null,
     });
   }
   if (response.messages?.length) {
@@ -420,9 +448,34 @@ function hubLogOperationResponse(action, response, {
       hubLogOperationResponse(`${action} → ${item.device_name || "TV"}`, item, { category: cat });
     }
   }
+  if (response.cleared?.length) {
+    hubLogPackageOutcomeList(`${action} cleared`, response.cleared, {
+      deviceName: name,
+      deviceId: id,
+      category: cat,
+      level: "success",
+    });
+  }
+  if (response.errors?.length) {
+    hubLogPackageOutcomeList(`${action} error`, response.errors, {
+      deviceName: name,
+      deviceId: id,
+      category: cat,
+      level: "error",
+    });
+  }
+  if (response.skipped?.length) {
+    hubLogPackageOutcomeList(`${action} skipped`, response.skipped, {
+      deviceName: name,
+      deviceId: id,
+      category: cat,
+      level: "warn",
+    });
+  }
   if (response.results?.length && !response.install_report) {
     for (const item of response.results) {
-      if (item.phases?.length || item.steps?.length || item.install_report) {
+      if (item.phases?.length || item.steps?.length || item.install_report || item.messages?.length
+        || item.cleared?.length || item.errors?.length || item.skipped?.length) {
         hubLogOperationResponse(`${action} → ${item.device_name || "TV"}`, item, { category: cat });
       } else {
         hubLog({
@@ -877,6 +930,53 @@ function renderSetupProvisioningPaths(paths) {
   }
 }
 
+function renderGuestSignInHints(info) {
+  const email = info?.guest_google_account || activeGuestAccountEmail();
+  const profile = info?.profile_short || "Main profile · Android user 0";
+  const profileLabel = document.getElementById("guestAccountProfileLabel");
+  if (profileLabel) profileLabel.textContent = profile;
+  const signInStep = document.getElementById("guestProvisionSignInStep");
+  if (signInStep) {
+    signInStep.innerHTML = `TV <strong>main profile</strong>: sign in with <strong>${esc(email)}</strong> (${esc(profile)})`;
+  }
+  const path2 = document.getElementById("guestProvisionPath2Steps");
+  if (path2?.children?.[0]) {
+    path2.children[0].innerHTML = signInStep?.innerHTML || `TV main profile: sign in with ${esc(email)}`;
+  }
+}
+
+function renderSetupGuestSignIn(info) {
+  const panel = document.getElementById("setupGuestSignInPanel");
+  if (!panel) return;
+  const data = info || {
+    guest_google_account: activeGuestAccountEmail(),
+    profile_short: "Main profile · Android user 0",
+    configured: Boolean(activeGuestAccountEmail()?.includes("@")),
+    summary: "",
+    steps: [],
+  };
+  panel.hidden = false;
+  const emailEl = document.getElementById("setupGuestSignInEmail");
+  if (emailEl) {
+    emailEl.textContent = data.guest_google_account || "—";
+    emailEl.classList.toggle("setup-guest-signin-missing", !data.configured);
+  }
+  const profileEl = document.getElementById("setupGuestSignInProfile");
+  if (profileEl) profileEl.textContent = data.profile_short || data.profile_label || "Main profile · Android user 0";
+  const summaryEl = document.getElementById("setupGuestSignInSummary");
+  if (summaryEl) summaryEl.textContent = data.summary || "";
+  const stepsEl = document.getElementById("setupGuestSignInSteps");
+  if (stepsEl && data.steps?.length) {
+    stepsEl.innerHTML = data.steps.map(s => `<li>${esc(s)}</li>`).join("");
+  }
+  const badge = document.getElementById("setupGuestSignInBadge");
+  if (badge) {
+    badge.textContent = data.configured ? "Account configured" : "Set account in Hub card";
+    badge.classList.toggle("warn", !data.configured);
+  }
+  renderGuestSignInHints(data);
+}
+
 function renderSetupChecklist(items) {
   const list = document.getElementById("setupChecklist");
   if (!list) return;
@@ -1014,8 +1114,13 @@ function syncPropertyAccountFields() {
   if (label) label.textContent = email;
   const hint = document.getElementById("setupGuestAccountHint");
   if (hint) {
-    hint.textContent = `Property “${activePropertyName()}” — TVs should sign in with this Google account before Path 2 provisioning.`;
+    hint.innerHTML = `Property “${esc(activePropertyName())}” — on each TV sign in on the <strong>main profile</strong> (Android user 0) with <strong>${esc(email)}</strong> before streaming sync or clearing logins.`;
   }
+  renderGuestSignInHints({
+    guest_google_account: email,
+    profile_short: "Main profile · Android user 0",
+    configured: Boolean(email?.includes("@")),
+  });
 }
 
 async function setActiveProperty(propertyId, { reload = true } = {}) {
@@ -1134,6 +1239,7 @@ async function loadSetupStatus() {
     if (provDoc && launcher.provisioning_doc) provDoc.href = launcher.provisioning_doc;
 
     renderSetupChecklist(data.checklist || []);
+    renderSetupGuestSignIn(data.guest_sign_in || hub.guest_sign_in);
     renderSetupProvisioningPaths(data.provisioning_paths || []);
     renderSetupTvList(data.tvs || {});
   } catch (err) {
@@ -1568,7 +1674,7 @@ async function loadGuestWelcome() {
 function refreshGuestWelcomePreview() {
   const iframe = document.getElementById("guestWelcomePreview");
   if (!iframe) return;
-  iframe.src = `/guest/?hub_preview=1&t=${Date.now()}`;
+  iframe.src = `/guest/?hub_preview=1&property_id=${activePropertyId}&t=${Date.now()}`;
 }
 
 async function saveGuestWelcome() {
@@ -2550,6 +2656,7 @@ async function installMatrixBatch({ matchSource = false } = {}) {
       timeout: API_MIRROR_TIMEOUT_MS,
     });
     renderStreamingInstallLog(r.install_report, matchSource ? "Match Main TV" : "Batch install");
+    hubLogOperationResponse(matchSource ? "Match Main TV" : "Batch install", r, { category: "install" });
     if (note) note.textContent = r.message || "";
     toast(r.message || "Batch install complete", r.ok ? "success" : "error");
     await loadStreamingMatrix();
@@ -2590,12 +2697,7 @@ async function scanStreamingStandard() {
       detail += `. Extra packages on Main TV (not in catalog): ${extras.join(", ")}`;
     }
     if (note) note.textContent = detail;
-    hubLog({
-      level: r.ok ? "success" : "error",
-      category: "install",
-      message: detail,
-      detail: (r.labels || []).join(", "),
-    });
+    hubLogOperationResponse(`Scan ${sourceName} standard`, r, { category: "install" });
     toast(detail, r.ok ? "success" : "error");
     streamingMatrixSelected = null;
     await loadStreamingMatrix();
@@ -2711,6 +2813,11 @@ async function applyStreamingAllowList() {
       timeout: API_MIRROR_TIMEOUT_MS,
     });
     renderStreamingInstallLog(r.install_report, `Apply to ${selectedDevice.name}`);
+    hubLogOperationResponse(`Apply streaming allow-list`, r, {
+      category: "install",
+      deviceName: selectedDevice.name,
+      deviceId: selectedDevice.id,
+    });
     streamingPendingPackages = null;
     if (r.catalog) renderStreamingApps(r.catalog);
     else await loadStreamingApps();
@@ -2762,6 +2869,11 @@ async function installAllStreamingApps() {
       timeout: API_MIRROR_TIMEOUT_MS,
     });
     renderStreamingInstallLog(r.install_report, `Install on ${selectedDevice.name}`);
+    hubLogOperationResponse(`Install streaming apps`, r, {
+      category: "install",
+      deviceName: selectedDevice.name,
+      deviceId: selectedDevice.id,
+    });
     if (r.catalog) renderStreamingApps(r.catalog);
     else await loadStreamingApps();
     const failed = (r.results || []).filter(x => !x.ok);
@@ -2840,24 +2952,52 @@ async function clearStreamingLogins() {
   if (!selectedDevice) { toast("Select a TV first", "error"); return; }
   if (!isDeviceOnline()) { toast("TV not connected", "error"); return; }
   if (!confirm("Clear streaming app sign-ins on this TV?\n\nNetflix, Disney+, Plex, Paramount+, etc. will need to be signed in again.")) return;
+  hubLog({
+    level: "info",
+    category: "guest",
+    message: "Clear streaming logins started",
+    deviceName: selectedDevice.name,
+    deviceId: selectedDevice.id,
+  });
   try {
     const r = await api(`/registry/${selectedDevice.id}/clear-streaming-logins`, {
       method: "POST",
       timeout: API_LONG_TIMEOUT_MS,
     });
+    hubLogOperationResponse("Clear streaming logins", r, {
+      category: "guest",
+      deviceName: selectedDevice.name,
+      deviceId: selectedDevice.id,
+    });
     toast(r.ok ? `Cleared ${r.cleared?.length || 0} app(s)` : "Some apps failed to clear", r.ok ? "success" : "error");
-  } catch (e) { toast(e.message, "error"); }
+    loadGuestSummary();
+  } catch (e) {
+    hubLog({
+      level: "error",
+      category: "guest",
+      message: `Clear streaming logins failed: ${e.message}`,
+      deviceName: selectedDevice.name,
+      deviceId: selectedDevice.id,
+    });
+    toast(e.message, "error");
+  }
 }
 
 async function clearStreamingLoginsAll() {
   if (!confirm("Clear streaming app sign-ins on all connected property TVs?\n\nGuests will need to sign in again on each streaming app.")) return;
+  hubLog({ level: "info", category: "guest", message: "Clear streaming logins on all TVs started" });
   try {
     const r = await api("/registry/clear-streaming-logins-all", {
       method: "POST",
       timeout: API_MIRROR_TIMEOUT_MS,
     });
+    hubLogOperationResponse("Clear streaming logins (all TVs)", r, { category: "guest" });
     toast(r.message || "Clear complete", r.ok ? "success" : "error");
-  } catch (e) { toast(e.message, "error"); }
+    loadGuestSummary();
+  } catch (e) {
+    hubLog({ level: "error", category: "guest", message: `Clear all failed: ${e.message}` });
+    toast(e.message, "error");
+  }
 }
 
 async function loadOverview() {

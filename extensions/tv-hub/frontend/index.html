@@ -366,7 +366,7 @@
                   <input type="email" id="setupGuestAccount" placeholder="guest@example.com" autocomplete="off" required />
                   <button type="submit" class="btn btn-secondary btn-sm">Save</button>
                 </form>
-                <p class="field-hint" id="setupGuestAccountHint">Sign in on each TV with this account before hub provisioning (Path 2).</p>
+                <p class="field-hint" id="setupGuestAccountHint">Sign in on the TV <strong>main profile</strong> (Android user 0) with this account before streaming apps or login clearing.</p>
               </dd>
               <dt>Admin URL</dt>
               <dd><code id="setupHubUrl" class="setup-mono">—</code> <button type="button" class="btn btn-secondary btn-sm setup-copy" data-copy-target="setupHubUrl">Copy</button></dd>
@@ -398,7 +398,25 @@
 
           <section class="setup-card setup-card-wide" aria-labelledby="setupProvisionTitle">
             <h3 id="setupProvisionTitle">Provision a TV</h3>
-            <p class="setup-card-lead">Two ways to onboard. <strong>Path 1</strong> needs no developer options — download the app and point it at this hub. <strong>Path 2</strong> uses ADB so the hub can push the APK and configure the TV.</p>
+            <p class="setup-card-lead">Two ways to onboard. <strong>Path 1</strong> needs no developer options — download the app and point it at this hub. <strong>Path 2</strong> uses ADB so the hub can push the APK and configure the TV. For streaming apps, each TV must be signed in on the <strong>main profile</strong> with the property guest Google account below.</p>
+            <div class="setup-guest-signin" id="setupGuestSignInPanel" hidden>
+              <div class="setup-guest-signin-head">
+                <strong>Guest TV sign-in</strong>
+                <span class="setup-guest-signin-badge" id="setupGuestSignInBadge">Required for streaming</span>
+              </div>
+              <p class="setup-guest-signin-summary" id="setupGuestSignInSummary"></p>
+              <dl class="setup-guest-signin-dl">
+                <div>
+                  <dt>Google account</dt>
+                  <dd><code id="setupGuestSignInEmail" class="setup-mono">—</code></dd>
+                </div>
+                <div>
+                  <dt>Android profile</dt>
+                  <dd id="setupGuestSignInProfile">Main profile · Android user 0</dd>
+                </div>
+              </dl>
+              <ol class="setup-guest-signin-steps" id="setupGuestSignInSteps"></ol>
+            </div>
             <div class="setup-path-grid" id="setupPathGrid">
               <article class="setup-path-card setup-path-recommended" aria-labelledby="setupPathAppTitle">
                 <div class="setup-path-badge">Recommended</div>
@@ -504,7 +522,7 @@
           <div>
             <h3 style="font-size:1.1rem; margin-bottom:0.25rem;">TV account &amp; streaming</h3>
             <p style="color:var(--text-muted); font-size:0.85rem;" id="guestAccountProvisioningHint">
-              Each TV for the selected property should use <strong id="guestAccountEmailLabel">—</strong> as the only Google account on the main profile.
+              Each TV for the selected property should use <strong id="guestAccountEmailLabel">—</strong> on the <strong id="guestAccountProfileLabel">main profile (Android user 0)</strong> — not a child or restricted profile.
             </p>
             <form class="setup-inline-form guest-account-inline" id="guestPropertyAccountForm" style="margin-bottom:0.75rem;">
               <label class="field" style="margin:0;">
@@ -821,7 +839,8 @@
               <div class="setup-path-grid" style="margin:0;">
                 <div>
                   <strong>Path 1 — Download app</strong>
-                  <ol>
+                  <ol id="guestProvisionPath1Steps">
+                    <li id="guestProvisionSignInStep">TV main profile: sign in with property guest Google account</li>
                     <li>Setup → <strong>Create room slot</strong> → copy room code</li>
                     <li>TV: install APK from hub → enter hub URL</li>
                     <li>Claim with room code (or self-register → approve on hub)</li>
@@ -829,10 +848,11 @@
                 </div>
                 <div>
                   <strong>Path 2 — Hub via ADB</strong>
-                  <ol>
+                  <ol id="guestProvisionPath2Steps">
+                    <li>TV main profile: sign in with property guest Google account</li>
                     <li>TV: Developer options → wireless/network debugging</li>
-                    <li>Register → Pair → Connect → <strong>Provision New TV</strong></li>
-                    <li>Set guest launcher as Home when prompted</li>
+                    <li>Register → Pair → Connect → <strong>Push welcome app</strong></li>
+                    <li>Apply streaming apps · clear logins between stays</li>
                   </ol>
                 </div>
               </div>

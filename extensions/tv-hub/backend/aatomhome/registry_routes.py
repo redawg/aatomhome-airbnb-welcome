@@ -9,6 +9,8 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 import database as db
+from ops_logging import append_message, log_op_end, log_op_start, operation_id
+
 from . import store
 from .launcher_deploy import deploy_launcher, deploy_launcher_bulk
 from .tv_agent_ws import dispatch_clear_streaming, hub_public_url, poll_agent_command, submit_agent_result
@@ -92,6 +94,13 @@ async def registry_deploy_launcher(device_id: int, body: DeployLauncherBody | No
     if not device:
         raise HTTPException(404, "Device not found")
     req = body or DeployLauncherBody()
+    logger.info(
+        "deploy-launcher request device_id=%s name=%s force_reinstall=%s launch=%s",
+        device_id,
+        device.get("name"),
+        req.force_reinstall,
+        req.launch_welcome,
+    )
     try:
         result = await deploy_launcher(
             device,
@@ -102,6 +111,7 @@ async def registry_deploy_launcher(device_id: int, body: DeployLauncherBody | No
             auto_claim=req.auto_claim,
         )
     except ValueError as exc:
+        logger.warning("deploy-launcher rejected device_id=%s: %s", device_id, exc)
         raise HTTPException(503, str(exc))
     if req.launch_welcome and result.get("ok"):
         import device_detection
@@ -129,6 +139,11 @@ async def registry_deploy_launcher_bulk(body: DeployLauncherBulkBody | None = No
         devices = [d for d in devices if d.get("connection_state") == "device"]
     if not devices:
         raise HTTPException(404, "No ADB-connected TVs — connect a TV first")
+    logger.info(
+        "deploy-launcher bulk count=%s online_only=%s",
+        len(devices),
+        req.online_only,
+    )
     return await deploy_launcher_bulk(
         devices,
         set_home=req.set_home,
@@ -349,14 +364,90 @@ async def clear_streaming_via_agent(device_id: int) -> dict[str, Any]:
     device = await db.get_device(device_id)
     if not device:
         raise HTTPException(404, "Device not found")
+
+    device_name = device.get("name") or f"TV {device_id}"
+    op_id, started = log_op_start(
+        logger,
+        "clear_streaming",
+        op_id=operation_id("clear"),
+        device_id=device_id,
+        device_name=device_name,
+    )
+    messages: list[str] = [f"Clear streaming logins → {device_name}"]
+
+    append_message(messages, "Trying TV agent (WebSocket / HTTP poll)…")
     agent_result = await dispatch_clear_streaming(device_id)
     if agent_result.get("ok"):
-        return {"ok": True, "via": "tv_agent", **agent_result}
+        cleared = agent_result.get("cleared") or []
+        append_message(messages, f"TV agent cleared {len(cleared)} app(s)")
+        if agent_result.get("error"):
+            append_message(messages, f"Agent note: {agent_result['error']}")
+        duration_ms = log_op_end(
+            logger,
+            op_id,
+            "clear_streaming",
+            True,
+            started,
+            f"via tv_agent — {len(cleared)} cleared",
+            device_id=device_id,
+        )
+        return {
+            "ok": True,
+            "via": "tv_agent",
+            "operation_id": op_id,
+            "duration_ms": duration_ms,
+            "device_id": device_id,
+            "device_name": device_name,
+            "messages": messages,
+            **agent_result,
+        }
+
+    agent_err = agent_result.get("error") or "agent unavailable"
+    append_message(messages, f"TV agent failed ({agent_err}) — falling back to ADB")
+    logger.info("[%s] agent clear failed for %s: %s — ADB fallback", op_id, device_name, agent_err)
+
     import guest_profile
     import adb
 
+    connected, effective_port = await adb.ensure_connected(device["host"], device["port"])
+    if not connected:
+        duration_ms = log_op_end(
+            logger,
+            op_id,
+            "clear_streaming",
+            False,
+            started,
+            "TV offline",
+            device_id=device_id,
+        )
+        msg = f"{device_name}: not connected over ADB"
+        raise HTTPException(503, msg)
+
+    if effective_port != device["port"]:
+        device["port"] = effective_port
     serial = f"{device['host']}:{device['port']}"
-    await adb.connect(device["host"], device["port"])
     owner_id = device.get("owner_user_id") or guest_profile.MAIN_USER_ID
+    append_message(messages, f"ADB connected {serial} — clearing packages on user {owner_id}")
     adb_result = await guest_profile.clear_streaming_logins(serial, [owner_id])
-    return {"ok": True, "via": "adb", **adb_result}
+    messages.extend(adb_result.get("messages") or [])
+    ok = bool(adb_result.get("ok"))
+    duration_ms = log_op_end(
+        logger,
+        op_id,
+        "clear_streaming",
+        ok,
+        started,
+        adb_result.get("message") or "ADB clear complete",
+        device_id=device_id,
+        via="adb",
+    )
+    return {
+        "ok": ok,
+        "via": "adb",
+        "operation_id": op_id,
+        "duration_ms": duration_ms,
+        "device_id": device_id,
+        "device_name": device_name,
+        "messages": messages,
+        **adb_result,
+    }

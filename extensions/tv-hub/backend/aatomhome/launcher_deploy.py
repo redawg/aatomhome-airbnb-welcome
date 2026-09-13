@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import adb
@@ -12,12 +13,16 @@ from guest_launcher import (
     guest_page_url,
     launch_guest_welcome,
 )
+from ops_logging import append_message, log_op_end, log_op_start, operation_id, step
 
 from . import store
 from .tv_agent_ws import hub_public_url
 
+logger = logging.getLogger("aatomhome.deploy")
+
 
 async def _require_connected(device: dict) -> str:
+    name = device.get("name") or device.get("host")
     connected, effective_port = await adb.ensure_connected(device["host"], device["port"])
     if not connected:
         raise ValueError(
@@ -26,7 +31,10 @@ async def _require_connected(device: dict) -> str:
         )
     if effective_port != device["port"]:
         device["port"] = effective_port
-    return f"{device['host']}:{device['port']}"
+        logger.info("ADB port updated for %s → %s:%s", name, device["host"], effective_port)
+    serial = f"{device['host']}:{device['port']}"
+    logger.debug("ADB connected %s serial=%s", name, serial)
+    return serial
 
 
 async def deploy_launcher(
@@ -44,41 +52,87 @@ async def deploy_launcher(
     Works for Shield, Google TV, and Android TV without the guest Google account.
     """
     device_id = int(device["id"])
-    serial = await _require_connected(device)
+    device_name = device.get("name") or f"TV {device_id}"
+    op_id, started = log_op_start(
+        logger,
+        "deploy_launcher",
+        op_id=operation_id("deploy"),
+        device_id=device_id,
+        device_name=device_name,
+    )
+    messages: list[str] = []
+    append_message(messages, f"Deploy launcher → {device_name}")
+
+    try:
+        serial = await _require_connected(device)
+    except ValueError as exc:
+        duration_ms = log_op_end(logger, op_id, "deploy_launcher", False, started, str(exc))
+        return {
+            "ok": False,
+            "operation_id": op_id,
+            "duration_ms": duration_ms,
+            "device_id": device_id,
+            "device_name": device_name,
+            "message": str(exc),
+            "messages": messages + [str(exc)],
+            "steps": [step("connect_adb", False, str(exc))],
+        }
+
     hub = (hub_url or hub_public_url()).rstrip("/")
     user_id = device.get("owner_user_id") or 0
     steps: list[dict[str, Any]] = []
 
     status_before = await get_launcher_status(serial, user_id)
     if force_reinstall or not status_before.get("installed"):
+        append_message(messages, "Installing guest launcher APK…")
         install = await guest_launcher._install_launcher(serial, user_id)
-        steps.append(install)
+        steps.append({**install, "action": install.get("action") or "install_launcher"})
+        append_message(messages, install.get("message") or ("APK install ok" if install.get("ok") else "APK install failed"))
         if not install.get("ok"):
+            duration_ms = log_op_end(
+                logger,
+                op_id,
+                "deploy_launcher",
+                False,
+                started,
+                install.get("message") or "APK install failed",
+            )
             return {
                 "ok": False,
+                "operation_id": op_id,
+                "duration_ms": duration_ms,
                 "device_id": device_id,
+                "device_name": device_name,
                 "serial": serial,
                 "hub_url": hub,
                 "steps": steps,
+                "messages": messages,
                 "message": install.get("message") or "APK install failed",
             }
     else:
-        steps.append({
-            "ok": True,
-            "action": "install_launcher",
-            "skipped": True,
-            "message": "Launcher already installed — use force_reinstall to push a new APK build",
-        })
+        skip_step = step(
+            "install_launcher",
+            True,
+            "Launcher already installed — use force_reinstall to push a new APK build",
+            skipped=True,
+        )
+        steps.append(skip_step)
+        append_message(messages, skip_step["message"])
 
     if set_home:
+        append_message(messages, "Setting guest launcher as home activity…")
         home = await guest_launcher._set_launcher_home(serial, user_id)
-        steps.append({**home, "user_id": user_id})
+        home_step = {**home, "action": home.get("action") or "set_home", "user_id": user_id}
+        steps.append(home_step)
+        append_message(messages, home.get("message") or ("Home set" if home.get("ok") else "Set home failed"))
         if not home.get("ok"):
-            steps.append({
-                "ok": True,
-                "action": "set_home_manual",
-                "message": "On the TV: press Home → choose Guest Welcome → Always",
-            })
+            manual = step(
+                "set_home_manual",
+                True,
+                "On the TV: press Home → choose Guest Welcome → Always",
+            )
+            steps.append(manual)
+            append_message(messages, manual["message"])
 
     if auto_claim:
         meta = await store.ensure_meta_for_device(device_id)
@@ -87,27 +141,35 @@ async def deploy_launcher(
             registration_status="claimed",
             pending_approval=0,
         )
-        steps.append({
-            "ok": True,
-            "action": "hub_claim",
-            "message": f"Hub slot bound (room code {meta.get('claim_code') or '—'})",
-            "claim_code": meta.get("claim_code"),
-        })
+        claim_step = step(
+            "hub_claim",
+            True,
+            f"Hub slot bound (room code {meta.get('claim_code') or '—'})",
+            claim_code=meta.get("claim_code"),
+        )
+        steps.append(claim_step)
+        append_message(messages, claim_step["message"])
 
+    launch: dict[str, Any]
     if launch_welcome:
+        append_message(messages, f"Opening welcome page at {guest_page_url(hub)}…")
         launch = await launch_guest_welcome(serial, user_id, hub, force=True)
-        steps.append(launch)
+        steps.append({**launch, "action": launch.get("action") or "launch_welcome"})
+        append_message(messages, launch.get("message") or ("Welcome opened" if launch.get("ok") else "Launch failed"))
     else:
         launch = {"ok": True, "skipped": True, "action": "launch_welcome"}
+        steps.append(launch)
 
     if start_agent and launch_welcome:
-        agent = await guest_launcher._allow_auto_start(serial, user_id)
-        steps.extend(agent)
-        steps.append({
-            "ok": True,
-            "action": "tv_agent",
-            "message": "Launcher started — TV agent polls hub when app is in foreground",
-        })
+        agent_steps = await guest_launcher._allow_auto_start(serial, user_id)
+        for agent_step in agent_steps:
+            steps.append({**agent_step, "action": agent_step.get("action") or "tv_agent_pref"})
+        steps.append(step(
+            "tv_agent",
+            True,
+            "Launcher started — TV agent polls hub when app is in foreground",
+        ))
+        append_message(messages, "TV agent enabled for hub polling")
 
     status = await get_launcher_status(serial, user_id)
     failed = [s for s in steps if not s.get("ok", True) and not s.get("skipped")]
@@ -119,23 +181,41 @@ async def deploy_launcher(
     if not status.get("installed"):
         manual.append("APK install may have failed — check steps and retry Update launcher APK")
 
+    if manual:
+        append_message(messages, "Manual: " + "; ".join(manual))
+
+    summary = (
+        "Welcome app pushed — launcher installed and welcome opened"
+        if ok and launch_welcome
+        else "Launcher APK updated on TV"
+        if ok and not launch_welcome
+        else "Deploy incomplete — see steps"
+    )
+    duration_ms = log_op_end(
+        logger,
+        op_id,
+        "deploy_launcher",
+        ok,
+        started,
+        summary,
+        device_id=device_id,
+        failed_steps=len(failed),
+    )
     return {
         "ok": ok,
+        "operation_id": op_id,
+        "duration_ms": duration_ms,
         "device_id": device_id,
+        "device_name": device_name,
         "serial": serial,
         "hub_url": hub,
         "guest_page_url": guest_page_url(hub),
         "launcher": status,
         "apk_package": GUEST_LAUNCHER_PACKAGE,
         "steps": steps,
+        "messages": messages,
         "manual_steps": manual,
-        "message": (
-            "Welcome app pushed — launcher installed and welcome opened"
-            if ok and launch_welcome
-            else "Launcher APK updated on TV"
-            if ok and not launch_welcome
-            else "Deploy incomplete — see steps"
-        ),
+        "message": summary,
     }
 
 
@@ -145,39 +225,70 @@ async def deploy_launcher_bulk(
     hub_url: str | None = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
+    op_id, started = log_op_start(
+        logger,
+        "deploy_launcher_bulk",
+        op_id=operation_id("bulk-deploy"),
+        device_count=len(devices),
+    )
+    messages: list[str] = [f"Bulk launcher deploy — {len(devices)} TV(s)"]
     results: list[dict[str, Any]] = []
+
     for device in devices:
         name = device.get("name") or device.get("host")
+        append_message(messages, f"→ {name}")
         try:
             result = await deploy_launcher(device, hub_url=hub_url, **kwargs)
         except ValueError as exc:
+            logger.warning("[%s] %s skipped: %s", op_id, name, exc)
             result = {
                 "ok": False,
                 "device_id": device.get("id"),
                 "device_name": name,
                 "skipped": True,
                 "message": str(exc),
+                "messages": [str(exc)],
             }
         except Exception as exc:
+            logger.exception("[%s] deploy failed for %s", op_id, name)
             result = {
                 "ok": False,
                 "device_id": device.get("id"),
                 "device_name": name,
                 "message": str(exc),
+                "messages": [str(exc)],
             }
         result["device_name"] = name
         results.append(result)
+        append_message(messages, result.get("message") or ("ok" if result.get("ok") else "failed"))
 
     synced = sum(1 for r in results if r.get("ok"))
     failed = sum(1 for r in results if not r.get("ok") and not r.get("skipped"))
     skipped = sum(1 for r in results if r.get("skipped"))
+    summary = (
+        f"Pushed welcome app to {synced} TV(s)"
+        + (f"; {skipped} offline" if skipped else "")
+        + (f"; {failed} failed" if failed else "")
+    )
+    duration_ms = log_op_end(
+        logger,
+        op_id,
+        "deploy_launcher_bulk",
+        failed == 0,
+        started,
+        summary,
+        synced=synced,
+        failed=failed,
+        skipped=skipped,
+    )
     return {
         "ok": failed == 0,
+        "operation_id": op_id,
+        "duration_ms": duration_ms,
         "synced": synced,
         "failed": failed,
         "skipped": skipped,
         "results": results,
-        "message": f"Pushed welcome app to {synced} TV(s)"
-        + (f"; {skipped} offline" if skipped else "")
-        + (f"; {failed} failed" if failed else ""),
+        "messages": messages,
+        "message": summary,
     }

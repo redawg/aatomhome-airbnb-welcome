@@ -1753,6 +1753,69 @@ body.activity-log-open .toast {
   word-break: break-word;
 }
 
+.setup-guest-signin {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.setup-guest-signin-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.setup-guest-signin-badge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.setup-guest-signin-summary {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.setup-guest-signin-dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0 0 0.65rem;
+  font-size: 0.85rem;
+}
+
+.setup-guest-signin-dl dt {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  margin-bottom: 0.15rem;
+}
+
+.setup-guest-signin-dl dd {
+  margin: 0;
+}
+
+.setup-guest-signin-steps {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
 .setup-path-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

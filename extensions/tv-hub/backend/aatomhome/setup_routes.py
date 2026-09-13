@@ -105,8 +105,44 @@ async def _tv_summary() -> dict[str, Any]:
     }
 
 
-def _provisioning_paths(hub_url: str) -> list[dict[str, Any]]:
+def _guest_sign_in_info(guest_email: str) -> dict[str, Any]:
+    try:
+        from guest_profile import MAIN_USER_ID
+    except ImportError:
+        MAIN_USER_ID = 0
+    profile_label = "Main profile (owner / primary user)"
+    profile_short = f"Main profile · Android user {MAIN_USER_ID}"
+    configured = bool(guest_email and "@" in guest_email)
+    account_display = guest_email if configured else "(set in Setup → Hub → TV Google account)"
+    return {
+        "guest_google_account": guest_email,
+        "android_user_id": MAIN_USER_ID,
+        "profile_label": profile_label,
+        "profile_short": profile_short,
+        "configured": configured,
+        "summary": (
+            f"On each TV, sign in with {guest_email} on the {profile_label.lower()} "
+            "before streaming apps or checkout login clearing."
+            if configured
+            else "Set the property TV Google account in Setup before provisioning streaming apps."
+        ),
+        "steps": [
+            "On the TV: Settings → Accounts → add or switch to the primary Google profile (not a child profile).",
+            f"Sign in with: {account_display}",
+            "Use only this account on the main profile — extra accounts can confuse streaming sync.",
+            "After sign-in: hub can push the welcome app, sync streaming apps, and clear logins between stays.",
+        ],
+    }
+
+
+def _provisioning_paths(hub_url: str, guest_email: str = "") -> list[dict[str, Any]]:
     apk_url = f"{hub_url}/api/aatomhome/guest-launcher/apk"
+    sign_in = _guest_sign_in_info(guest_email)
+    account_step = (
+        f"TV main profile: sign in with {guest_email} (Android user {sign_in['android_user_id']})."
+        if sign_in["configured"]
+        else "Hub Setup → set TV Google account, then sign in on the TV main profile."
+    )
     return [
         {
             "id": "app",
@@ -114,6 +150,8 @@ def _provisioning_paths(hub_url: str) -> list[dict[str, Any]]:
             "recommended": True,
             "summary": "No developer options on the TV. Download the launcher, enter the hub URL, claim with a room code.",
             "steps": [
+                "Hub Setup: confirm TV Google account for this property (see sign-in box above).",
+                account_step,
                 "On hub Setup: create a room slot and copy the room code (or let the TV self-register).",
                 f"On the TV: install the APK from {apk_url}",
                 f"Launch the app → Hub URL: {hub_url}",
@@ -127,9 +165,11 @@ def _provisioning_paths(hub_url: str) -> list[dict[str, Any]]:
             "recommended": False,
             "summary": "Developer options + wireless/network debugging. Hub installs the APK and can set Home, streaming apps, and lockdown.",
             "steps": [
+                "Hub Setup: confirm TV Google account for this property (see sign-in box above).",
+                account_step,
                 "On the TV: enable Developer options → Wireless or Network debugging.",
-                "On hub: Register TV (IP + pair) → Connect → Provision New TV.",
-                "Optional: still use room code in the launcher if you prefer HTTP claim after install.",
+                "On hub: Register TV (IP + pair) → Connect → Push welcome app.",
+                "Guest Experience: Apply streaming apps · Clear streaming logins between stays.",
             ],
             "requires_adb": True,
         },
@@ -182,9 +222,13 @@ def _checklist(
         },
         {
             "id": "guest_google_account",
-            "label": "TV provisioning Google account",
+            "label": "Guest Google account on main profile",
             "status": "ok" if guest_account else "todo",
-            "detail": guest_account or "Set the Google account TVs should sign in with",
+            "detail": (
+                f"{guest_account} · main profile (Android user 0)"
+                if guest_account
+                else "Set the Google account for the TV primary profile in Hub below"
+            ),
             "path": "both",
         },
         {
@@ -273,6 +317,7 @@ async def get_setup_status() -> dict[str, Any]:
     properties = await _property_summaries()
     active_prop = next((p for p in properties if p["id"] == active_property_id), properties[0] if properties else None)
     guest_account = (active_prop or {}).get("guest_google_account") or ""
+    guest_sign_in = _guest_sign_in_info(guest_account)
     return {
         "hub": {
             "public_url": hub_url,
@@ -281,7 +326,9 @@ async def get_setup_status() -> dict[str, Any]:
             "property_name": property_name,
             "active_property_id": active_property_id,
             "guest_google_account": guest_account,
+            "guest_sign_in": guest_sign_in,
         },
+        "guest_sign_in": guest_sign_in,
         "properties": properties,
         "homeassistant": {
             "ha_url": ha_cfg["ha_url"],
@@ -293,7 +340,7 @@ async def get_setup_status() -> dict[str, Any]:
             "last_error": ha_test.get("error") if not ha_test.get("ok") else None,
         },
         "tvs": tvs,
-        "provisioning_paths": _provisioning_paths(hub_url),
+        "provisioning_paths": _provisioning_paths(hub_url, guest_account),
         "checklist": _checklist(ha_cfg, ha_test, tvs, guest_account),
         "integration": {
             "name": "Aatomhome Airbnb Welcome",
