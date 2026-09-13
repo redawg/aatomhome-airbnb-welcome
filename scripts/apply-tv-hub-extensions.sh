@@ -18,6 +18,11 @@ echo "==> Applying aatomhome extensions to tv-hub"
 mkdir -p "$DEST/backend/aatomhome"
 rsync -a --delete "$EXT_SRC/" "$DEST/backend/aatomhome/"
 
+if [[ -d "$EXT_ROOT/frontend" ]]; then
+  rsync -a "$EXT_ROOT/frontend/" "$DEST/frontend/"
+  echo "==> Applied frontend extensions"
+fi
+
 if ! grep -q "$MARKER" "$MAIN" 2>/dev/null; then
   cat >> "$MAIN" <<'PY'
 
