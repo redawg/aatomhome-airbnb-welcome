@@ -21,6 +21,7 @@ tv-hub/
 # Signed APK build artifacts (prebuilt release APK is tracked)
 guest-launcher/releases/*-debugSigned*
 guest-launcher/releases/*-aligned*
+guest-launcher/releases/*.idsig
 
 # Keep prebuilt APK in repo
 !guest-launcher/releases/*.apk
