@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field
 
 import database as db
 from . import store
+from guest_account_resolve import guest_account_from_config
+
 from .setup_store import get_ha_config, get_setting, save_ha_config, set_setting
 from .launcher_routes import _apk_info, hub_onboarding_url
 from .tv_agent_ws import hub_public_url
@@ -134,7 +136,34 @@ def _provisioning_paths(hub_url: str) -> list[dict[str, Any]]:
     ]
 
 
-def _checklist(ha_cfg: dict[str, str], ha_test: dict[str, Any], tvs: dict[str, Any]) -> list[dict[str, Any]]:
+async def _active_property_id() -> int:
+    raw = (await get_setting("active_property_id", "1")).strip()
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return 1
+
+
+async def _property_summaries() -> list[dict[str, Any]]:
+    rows = []
+    for prop in await db.list_properties():
+        config = prop.get("config") or {}
+        guest_email = guest_account_from_config(config)
+        rows.append({
+            "id": prop["id"],
+            "name": prop.get("name") or f"Property {prop['id']}",
+            "slug": prop.get("slug"),
+            "guest_google_account": guest_email,
+        })
+    return rows
+
+
+def _checklist(
+    ha_cfg: dict[str, str],
+    ha_test: dict[str, Any],
+    tvs: dict[str, Any],
+    guest_account: str = "",
+) -> list[dict[str, Any]]:
     hub_url = hub_public_url()
     items: list[dict[str, Any]] = [
         {
@@ -150,6 +179,13 @@ def _checklist(ha_cfg: dict[str, str], ha_test: dict[str, Any], tvs: dict[str, A
             "status": "ok",
             "detail": f"{hub_url}/api/aatomhome/guest-launcher/apk",
             "path": "app",
+        },
+        {
+            "id": "guest_google_account",
+            "label": "TV provisioning Google account",
+            "status": "ok" if guest_account else "todo",
+            "detail": guest_account or "Set the Google account TVs should sign in with",
+            "path": "both",
         },
         {
             "id": "tv_slot_or_claimed",
@@ -233,13 +269,20 @@ async def get_setup_status() -> dict[str, Any]:
     tvs = await _tv_summary()
     hub_url = hub_public_url()
     property_name = (await get_setting("property_name")) or os.environ.get("PROPERTY_NAME", "My property")
+    active_property_id = await _active_property_id()
+    properties = await _property_summaries()
+    active_prop = next((p for p in properties if p["id"] == active_property_id), properties[0] if properties else None)
+    guest_account = (active_prop or {}).get("guest_google_account") or ""
     return {
         "hub": {
             "public_url": hub_url,
             "guest_url": f"{hub_url}/guest/",
             "admin_url": hub_url,
             "property_name": property_name,
+            "active_property_id": active_property_id,
+            "guest_google_account": guest_account,
         },
+        "properties": properties,
         "homeassistant": {
             "ha_url": ha_cfg["ha_url"],
             "token_configured": bool(ha_cfg["ha_token"]),
@@ -251,7 +294,7 @@ async def get_setup_status() -> dict[str, Any]:
         },
         "tvs": tvs,
         "provisioning_paths": _provisioning_paths(hub_url),
-        "checklist": _checklist(ha_cfg, ha_test, tvs),
+        "checklist": _checklist(ha_cfg, ha_test, tvs, guest_account),
         "integration": {
             "name": "Aatomhome Airbnb Welcome",
             "repo": "https://github.com/redawg/aatomhome-airbnb-welcome",
@@ -311,3 +354,55 @@ class PropertyNameBody(BaseModel):
 async def put_property_name(body: PropertyNameBody) -> dict[str, Any]:
     await set_setting("property_name", body.property_name.strip())
     return {"ok": True, "property_name": body.property_name.strip()}
+
+
+class ActivePropertyBody(BaseModel):
+    property_id: int = Field(..., ge=1)
+
+
+class GuestGoogleAccountBody(BaseModel):
+    guest_google_account: str = Field(..., min_length=3, max_length=200)
+
+
+@router.get("/api/aatomhome/properties")
+async def list_properties_api() -> dict[str, Any]:
+    active_property_id = await _active_property_id()
+    return {
+        "active_property_id": active_property_id,
+        "properties": await _property_summaries(),
+    }
+
+
+@router.put("/api/aatomhome/setup/active-property")
+async def put_active_property(body: ActivePropertyBody) -> dict[str, Any]:
+    prop = await db.get_property(body.property_id)
+    if not prop:
+        raise HTTPException(404, "Property not found")
+    await set_setting("active_property_id", str(body.property_id))
+    guest_email = guest_account_from_config(prop.get("config"))
+    return {
+        "ok": True,
+        "active_property_id": body.property_id,
+        "property_name": prop.get("name"),
+        "guest_google_account": guest_email,
+    }
+
+
+@router.put("/api/aatomhome/properties/{property_id}/guest-account")
+async def put_property_guest_account(property_id: int, body: GuestGoogleAccountBody) -> dict[str, Any]:
+    email = body.guest_google_account.strip()
+    if "@" not in email:
+        raise HTTPException(400, "Enter a valid email address")
+    prop = await db.get_property(property_id)
+    if not prop:
+        raise HTTPException(404, "Property not found")
+    config = dict(prop.get("config") or {})
+    ge = dict(config.get("guest_experience") or {})
+    ge["guest_google_account"] = email
+    config["guest_experience"] = ge
+    await db.update_property(property_id, config=config)
+    return {
+        "ok": True,
+        "property_id": property_id,
+        "guest_google_account": email,
+    }

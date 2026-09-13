@@ -35,21 +35,17 @@ for smali in MainActivity.smali BootReceiver.smali; do
   if [[ -f "$SMALI_DIR/$smali" ]]; then
     sed -i \
       -e "s|http://localhost:8080/guest/|${HUB_URL}|g" \
-      -e "s|http://172.18.1.137:8080/guest/|${HUB_URL}|g" \
+      -e "s|http://192.168.2.1:8080/guest/|${HUB_URL}|g" \
       "$SMALI_DIR/$smali"
   fi
 done
 
 java -jar "$APKTOOL_JAR" b "$WORKDIR/guest-apk" -o "$WORKDIR/guest-unsigned.apk"
 
-KEYSTORE="$WORKDIR/debug.keystore"
-keytool -genkey -v -keystore "$KEYSTORE" -storepass android -alias androiddebugkey \
-  -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
-  -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1 || true
-jarsigner -sigalg SHA256withRSA -digestalg SHA-256 \
-  -keystore "$KEYSTORE" -storepass android "$WORKDIR/guest-unsigned.apk" androiddebugkey
-
+# shellcheck source=lib/sign-apk.sh
+source "$ROOT/scripts/lib/sign-apk.sh"
 cp "$WORKDIR/guest-unsigned.apk" "$APK"
+sign_apk "$APK" "$WORKDIR"
 (
   cd "$(dirname "$APK")"
   sha256sum "$(basename "$APK")" > "$(basename "$APK").sha256"

@@ -2,31 +2,31 @@
 name: aatomhome-deploy
 description: >-
   Deploy Aatomhome Airbnb welcome (tv-hub + guest launcher APK + Home Assistant
-  integration). Use when deploying this repo, setting up forest-ha, configuring
+  integration). Use when deploying this repo, setting up home-assistant-host, configuring
   HA tokens, API keys, or installing the prebuilt Android guest launcher APK.
 ---
 
 # Aatomhome Airbnb Welcome — deployment skill
 
-Use this skill when the user asks to deploy, install, or configure this project on a new host (Forest Home, forest-ha/aatomhome, or a property LAN).
+Use this skill when the user asks to deploy, install, or configure this project on a new host (Forest Home, home-assistant-host/aatomhome, or a property LAN).
 
-## Forest Home (172.16.255.250) — default for Forest HA
+## Forest Home (192.168.1.10) — default for Forest HA
 
 ```bash
-cp deploy/forest-home/env.example deploy/forest-home/.env
+cp deploy/sample-property/env.example deploy/sample-property/.env
 # HA_LONG_LIVED_TOKEN from vault ha_token
-./scripts/deploy-forest-home.sh
+./scripts/deploy-sample-property.sh
 ./scripts/verify-hub.sh
 ```
 
-Docs: [`deploy/forest-home/README.md`](../../deploy/forest-home/README.md)
+Docs: [`deploy/sample-property/README.md`](../../deploy/sample-property/README.md)
 
 ## Before running anything
 
 1. Read [`deploy/QUESTIONNAIRE.md`](deploy/QUESTIONNAIRE.md) and [`docs/DEPLOY.md`](docs/DEPLOY.md).
 2. Ask the user for every **Required** item in the questionnaire. Do not invent IPs, tokens, or URLs.
 3. Write answers to `deploy/.env` (copy from [`deploy/env.template`](deploy/env.template)).
-4. Confirm the user is **not** asking you to modify frozen CDO production unless they explicitly say so.
+4. Confirm the user is **not** asking you to modify frozen legacy production unless they explicitly say so.
 
 ## Required questions (short form)
 
@@ -60,7 +60,7 @@ chmod +x scripts/*.sh
 
 ## APK hub URL
 
-Default APK bakes in `http://172.18.1.137:8080/guest/`. If user's `HUB_PUBLIC_URL` differs, set `PATCH_APK_HUB_URL=1` in `deploy/.env` before deploy (runs `scripts/patch-apk-hub-url.sh`).
+Default APK bakes in `http://192.168.2.1:8080/guest/`. If user's `HUB_PUBLIC_URL` differs, set `PATCH_APK_HUB_URL=1` in `deploy/.env` before deploy (runs `scripts/patch-apk-hub-url.sh`).
 
 Verify checksum:
 
@@ -76,7 +76,7 @@ curl -s "$HUB_PUBLIC_URL/api/health"
 curl -s "$HUB_PUBLIC_URL/api/registry"
 ```
 
-Tell the user to complete manual TV steps: wireless debugging pair, Home → Cielo Guest Welcome → Always.
+Tell the user to complete manual TV steps: wireless debugging pair, Home → Guest Welcome → Always.
 
 ## HA platform notes
 

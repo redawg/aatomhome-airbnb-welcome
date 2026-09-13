@@ -46,4 +46,4 @@ ENV_FILE=deploy/profiles/container/.env ./scripts/verify-hub.sh
 
 ## Legacy profile names
 
-`forest-lan`, `infra3-standalone`, and `cdo-vpn` are **removed**. Use `container` with `--host`, `--port`, and `--mode` instead. Old directories remain as deprecated stubs only.
+`forest-lan`, `lab host-standalone`, and `cdo-vpn` are **removed**. Use `container` with `--host`, `--port`, and `--mode` instead. Old directories remain as deprecated stubs only.

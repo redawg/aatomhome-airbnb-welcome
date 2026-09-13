@@ -16,12 +16,14 @@ aatomhome-airbnb-welcome/
 
 ## Add custom repository
 
+The GitHub repository must be **public** for HACS to download it. If you fork this project, make your fork public (or use a release archive).
+
 1. HACS → **Integrations** → ⋮ → **Custom repositories**
 2. Repository URL: `https://github.com/redawg/aatomhome-airbnb-welcome`
 3. Category: **Integration**
-4. Install **Aatomhome Airbnb Welcome**
+4. **Add** → search **Aatomhome Airbnb Welcome** → **Download**
 5. Restart Home Assistant
-6. **Settings → Devices & services → Add integration** → enter your hub URL
+6. **Settings → Devices & services → Add integration** → **Aatomhome Airbnb Welcome** → enter your hub URL (e.g. `http://192.168.1.100:8080`)
 
 ## Default branch updates
 

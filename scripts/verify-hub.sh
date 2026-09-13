@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-ENV_FILE="${ENV_FILE:-$ROOT/deploy/forest-home/.env}"
+ENV_FILE="${ENV_FILE:-$ROOT/deploy/sample-property/.env}"
 
 if [[ -f "$ENV_FILE" ]]; then
   # shellcheck disable=SC1090

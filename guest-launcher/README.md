@@ -1,6 +1,6 @@
 # Guest welcome launcher (Android TV)
 
-Pre-built APK that sets **Cielo / Aatomhome Guest Welcome** as the TV home app and loads the hub welcome page in a WebView.
+Pre-built APK that sets **Aatomhome Guest Welcome** as the TV home app and loads the hub welcome page in a WebView.
 
 ## Precompiled release
 
@@ -10,7 +10,7 @@ Pre-built APK that sets **Cielo / Aatomhome Guest Welcome** as the TV home app a
 | [`releases/aatomhome-guest-welcome.apk.sha256`](releases/aatomhome-guest-welcome.apk.sha256) | SHA-256 checksum |
 
 **Package:** `com.cielodeloro.guestwelcome`  
-**Default hub URL baked in:** `http://172.18.1.137:8080/guest/` — patch at deploy time with [`../scripts/patch-apk-hub-url.sh`](../scripts/patch-apk-hub-url.sh) and `HUB_PUBLIC_URL`.
+**Default hub URL baked in:** `http://192.168.2.1:8080/guest/` — patch at deploy time with [`../scripts/patch-apk-hub-url.sh`](../scripts/patch-apk-hub-url.sh) and `HUB_PUBLIC_URL`.
 
 **Multi-property / claim flow (source):** `HubConfig.kt` persists `hub_url` per TV; first boot shows room-code claim (`POST /api/registry/claim-by-code`) or self-register (`POST /api/registry/self-register`). `TvAgentService` polls the hub for guest ops when inbound ADB is unavailable.
 
@@ -54,11 +54,11 @@ adb install -r releases/aatomhome-guest-welcome.apk
 adb shell cmd package set-home-activity com.cielodeloro.guestwelcome/.MainActivity
 ```
 
-On first Home press, choose **Cielo Guest Welcome** → **Always**.
+On first Home press, choose **Guest Welcome** → **Always**.
 
 ### First-run flow (launcher app)
 
-1. **Hub URL** — type `http://172.16.1.36:18080` (or scan QR from hub Setup page).
+1. **Hub URL** — type `http://192.168.1.100:18080` (or scan QR from hub Setup page).
 2. **Room code** — from hub staff (**Setup → select TV → Get room code**), or **Self-register** and approve on hub.
 3. After claim → welcome WebView loads `/guest/` from the hub.
 

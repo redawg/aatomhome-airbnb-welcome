@@ -9,4 +9,4 @@ AI agents (Cursor, Claude Code, etc.) deploying this project:
 
 Prebuilt guest launcher APK (MIT): [`guest-launcher/releases/aatomhome-guest-welcome.apk`](guest-launcher/releases/aatomhome-guest-welcome.apk)
 
-Do not modify frozen CDO production unless the user explicitly requests it.
+Do not modify frozen legacy production unless the user explicitly requests it.

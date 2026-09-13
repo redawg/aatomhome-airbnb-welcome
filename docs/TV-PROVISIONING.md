@@ -1,6 +1,6 @@
 # TV provisioning — two paths
 
-Onboard a **Google TV, Android TV, or NVIDIA Shield** to the Aatomhome welcome hub. Example hub: **`http://172.16.1.36:18080`** (infra3 test).
+Onboard a **Google TV, Android TV, or Android TV device** to the Aatomhome welcome hub. Example hub: **`http://192.168.1.100:18080`** (lab hub).
 
 | Path | When to use | TV needs dev options? | Hub pushes APK? |
 |------|-------------|----------------------|-----------------|
@@ -33,8 +33,8 @@ Both paths end with the **guest launcher** (`com.cielodeloro.guestwelcome`) load
 
 | Item | Example |
 |------|---------|
-| Hub reachable from TV LAN | `http://172.16.1.36:18080/api/health` → `{"status":"ok"}` |
-| Hub Setup UI | `http://172.16.1.36:18080/` → **Setup** |
+| Hub reachable from TV LAN | `http://192.168.1.100:18080/api/health` → `{"status":"ok"}` |
+| Hub Setup UI | `http://192.168.1.100:18080/` → **Setup** |
 | Firewall | `18080/tcp` open on hub host |
 
 ---
@@ -49,8 +49,8 @@ Both paths end with the **guest launcher** (`com.cielodeloro.guestwelcome`) load
 2. Click **+ Create room slot** → name the room (e.g. `Living room Shield`).
 3. Copy the **room code** shown (or select the slot → **Show room code**).
 4. Note for the TV:
-   - **Hub URL:** `http://172.16.1.36:18080`
-   - **APK:** `http://172.16.1.36:18080/api/aatomhome/guest-launcher/apk`
+   - **Hub URL:** `http://192.168.1.100:18080`
+   - **APK:** `http://192.168.1.100:18080/api/aatomhome/guest-launcher/apk`
 
 **Alternative — self-register (no pre-created slot):** skip room slot; on the TV use **Self-register** in the launcher → approve under **Pending approval** on Setup.
 
@@ -58,8 +58,8 @@ Both paths end with the **guest launcher** (`com.cielodeloro.guestwelcome`) load
 
 1. **Install unknown apps** — enable for your browser or [Downloader](https://play.google.com/store/apps/details?id=com.esaba.downloader).
 2. Open the APK URL in the TV browser or Downloader → install.
-3. Launch **Aatomhome / Cielo Guest Welcome**.
-4. **Hub URL:** `http://172.16.1.36:18080` (or scan QR on hub Setup).
+3. Launch **Aatomhome / Guest Welcome**.
+4. **Hub URL:** `http://192.168.1.100:18080` (or scan QR on hub Setup).
 5. **Room code** from staff → **Claim on selected hub**.
 6. Welcome screen loads from the hub.
 
@@ -67,12 +67,12 @@ Both paths end with the **guest launcher** (`com.cielodeloro.guestwelcome`) load
 
 ```bash
 # Create room slot
-curl -s -X POST http://172.16.1.36:18080/api/aatomhome/registry/app-slot \
+curl -s -X POST http://192.168.1.100:18080/api/aatomhome/registry/app-slot \
   -H 'Content-Type: application/json' \
   -d '{"name":"Living room"}'
 
 # TV claims (from launcher)
-curl -s -X POST http://172.16.1.36:18080/api/registry/claim-by-code \
+curl -s -X POST http://192.168.1.100:18080/api/registry/claim-by-code \
   -H 'Content-Type: application/json' \
   -d '{"claim_code":"ABC123"}'
 ```
@@ -91,7 +91,7 @@ curl -s -X POST http://172.16.1.36:18080/api/registry/claim-by-code \
 2. **Developer options → Wireless debugging** → On.
 3. **Pair device with pairing code** — note IP, pairing port, 6-digit code (expires ~60s).
 
-**NVIDIA Shield**
+**Android TV device**
 
 1. **Settings → Device Preferences → About** → click **Build** 7×.
 2. **Developer options** → **USB debugging** + **Network debugging** → On.
@@ -113,28 +113,28 @@ Optional full CDO/Google TV lockdown: **Provision New TV (full)**.
 ### API (optional)
 
 ```bash
-curl -s -X POST http://172.16.1.36:18080/api/registry \
+curl -s -X POST http://192.168.1.100:18080/api/registry \
   -H 'Content-Type: application/json' \
-  -d '{"name":"NVIDIA Shield","host":"172.16.1.220","port":5555}'
+  -d '{"name":"Android TV device","host":"192.168.1.50","port":5555}'
 
-curl -s -X POST http://172.16.1.36:18080/api/registry/1/connect
+curl -s -X POST http://192.168.1.100:18080/api/registry/1/connect
 
-curl -s -X POST http://172.16.1.36:18080/api/aatomhome/registry/1/deploy-launcher \
+curl -s -X POST http://192.168.1.100:18080/api/aatomhome/registry/1/deploy-launcher \
   -H 'Content-Type: application/json' \
   -d '{"set_home":true,"launch_welcome":true,"force_reinstall":true}'
 ```
 
 ---
 
-## URLs (infra3 example)
+## URLs (lab host example)
 
 | Purpose | URL |
 |---------|-----|
-| Admin / Setup | `http://172.16.1.36:18080/` |
-| Guest welcome | `http://172.16.1.36:18080/guest/` |
-| Health | `http://172.16.1.36:18080/api/health` |
-| Download APK | `http://172.16.1.36:18080/api/aatomhome/guest-launcher/apk` |
-| Hub QR | `http://172.16.1.36:18080/api/aatomhome/guest-launcher/hub-qr.png` |
+| Admin / Setup | `http://192.168.1.100:18080/` |
+| Guest welcome | `http://192.168.1.100:18080/guest/` |
+| Health | `http://192.168.1.100:18080/api/health` |
+| Download APK | `http://192.168.1.100:18080/api/aatomhome/guest-launcher/apk` |
+| Hub QR | `http://192.168.1.100:18080/api/aatomhome/guest-launcher/hub-qr.png` |
 | Create app slot | `POST /api/aatomhome/registry/app-slot` |
 | Push welcome app (ADB) | `POST /api/aatomhome/registry/{id}/deploy-launcher` |
 | Push to all online TVs | `POST /api/aatomhome/registry/deploy-launcher` |

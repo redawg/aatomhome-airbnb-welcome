@@ -8,11 +8,19 @@ deploy/profiles/*/.env
 *.env
 !deploy/env.template
 !deploy/forest-ha/*.env.example
+!deploy/forest-home/*.env.example
+!deploy/profiles/**/env.example
+deploy/profiles/container-hub-*.env
+deploy/profiles/container/.env.bak*
 data/
 uploads/
 tv-hub/
 !extensions/tv-hub/
 !extensions/tv-hub/**
+
+# Signed APK build artifacts (prebuilt release APK is tracked)
+guest-launcher/releases/*-debugSigned*
+guest-launcher/releases/*-aligned*
 
 # Keep prebuilt APK in repo
 !guest-launcher/releases/*.apk

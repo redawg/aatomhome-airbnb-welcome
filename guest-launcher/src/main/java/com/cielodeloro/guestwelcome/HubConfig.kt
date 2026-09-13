@@ -112,7 +112,6 @@ class HubConfig(context: Context) {
         /** Legacy profile IDs migrated on read. */
         private val LEGACY_PROFILE_IDS = mapOf(
             "forest-lan" to PROFILE_HUB_A,
-            "infra3" to PROFILE_HUB_B,
             "infra3-standalone" to PROFILE_HUB_B,
         )
 

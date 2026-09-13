@@ -369,6 +369,6 @@ class MainActivity : Activity() {
     }
 
     companion object {
-        const val DEFAULT_HUB_URL = "http://172.18.1.137:8080/guest/"
+        const val DEFAULT_HUB_URL = "http://192.168.2.1:8080/guest/"
     }
 }

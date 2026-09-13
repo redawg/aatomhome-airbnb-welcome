@@ -3,7 +3,7 @@
 Use **`container`** deploy type instead:
 
 ```bash
-./scripts/configure-deploy.sh --type container --host 172.16.1.36 --port 18080 --force
+./scripts/configure-deploy.sh --type container --host 192.168.1.100 --port 18080 --force
 ./scripts/deploy-profile.sh container
 ```
 

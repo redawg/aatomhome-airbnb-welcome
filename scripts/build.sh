@@ -9,7 +9,7 @@ if [[ -f "$ENV_FILE" ]]; then
   # shellcheck disable=SC1090
   source "$ENV_FILE"
 else
-  echo "==> No deploy/.env — using defaults (copy deploy/env.template for forest-ha URLs)"
+  echo "==> No deploy/.env — using defaults (copy deploy/env.template for home-assistant-host URLs)"
   ADB_TV_HUB_GIT="${ADB_TV_HUB_GIT:-https://github.com/redawg/adb-tv-hub.git}"
   ADB_TV_HUB_TAG="${ADB_TV_HUB_TAG:-cdo-production-2026-09-11}"
   ADB_TV_HUB_IMAGE="${ADB_TV_HUB_IMAGE:-localhost/aatomhome-tv-hub:latest}"
@@ -45,4 +45,4 @@ podman build -t "$IMAGE" -f "$ROOT/tv-hub/Containerfile" "$ROOT/tv-hub"
 
 echo ""
 echo "Build OK: $IMAGE"
-echo "Deploy on forest-ha: cp deploy/env.template deploy/.env && ./scripts/deploy.sh"
+echo "Deploy on home-assistant-host: cp deploy/env.template deploy/.env && ./scripts/deploy.sh"

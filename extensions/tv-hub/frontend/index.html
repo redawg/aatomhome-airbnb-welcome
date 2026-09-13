@@ -59,7 +59,7 @@
             <span class="tv-actions-label">Power</span>
             <div class="toolbar tv-actions-toolbar">
               <button type="button" class="btn btn-primary btn-sm" id="btnWakeResetTv" title="Wake from network standby and open guest welcome">Wake &amp; reset welcome</button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btnWakeBedroomTvs" title="Wake CDO BED 2 and BED 3 and reset welcome on each">Wake bedroom TVs</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnWakeBedroomTvs" title="Wake Bedroom TV 2 and BED 3 and reset welcome on each">Wake bedroom TVs</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btnSleepTv" title="Put the selected TV into standby via ADB">Sleep TV</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btnRebootTv" title="Restart the selected TV via ADB">Reboot TV</button>
             </div>
@@ -73,11 +73,11 @@
             </div>
           </div>
           <div class="tv-actions-group">
-            <span class="tv-actions-label">Full setup (CDO / Google TV)</span>
+            <span class="tv-actions-label">Full setup (Google TV lockdown)</span>
             <div class="toolbar tv-actions-toolbar">
               <button type="button" class="btn btn-secondary btn-sm" id="btnProvisionTv" title="Full first-time: ADB helper, streaming apps, apps-only mode">Provision New TV (full)</button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btnGuestSetup" title="CDO guest account + streaming sync">Setup this TV (CDO)</button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btnGuestDeployAll" title="CDO roll-out to all online TVs">Update all CDO TVs</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnGuestSetup" title="Property guest account + streaming sync">Setup this TV</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnGuestDeployAll" title="Roll out to all online TVs">Update all property TVs</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btnEnsureGuestReady" title="Persist dev options, sync launcher, enable apps-only mode">Ensure TV ready</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btnAppsOnlyMode" title="Enable Google TV Apps only mode via ADB">Apps only mode</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btnAdbAutoEnablePanel" title="Keep wireless debugging after reboot">ADB Reboot Helper</button>
@@ -355,6 +355,19 @@
                   <button type="submit" class="btn btn-secondary btn-sm">Save</button>
                 </form>
               </dd>
+              <dt>Active property (TVs &amp; provisioning)</dt>
+              <dd>
+                <select id="setupPropertySelect" class="setup-property-select" aria-label="Select property for TV provisioning"></select>
+                <p class="field-hint">Welcome content, streaming apps, and guest account are per property.</p>
+              </dd>
+              <dt>TV Google account</dt>
+              <dd>
+                <form class="setup-inline-form" id="setupGuestAccountForm">
+                  <input type="email" id="setupGuestAccount" placeholder="guest@example.com" autocomplete="off" required />
+                  <button type="submit" class="btn btn-secondary btn-sm">Save</button>
+                </form>
+                <p class="field-hint" id="setupGuestAccountHint">Sign in on each TV with this account before hub provisioning (Path 2).</p>
+              </dd>
               <dt>Admin URL</dt>
               <dd><code id="setupHubUrl" class="setup-mono">—</code> <button type="button" class="btn btn-secondary btn-sm setup-copy" data-copy-target="setupHubUrl">Copy</button></dd>
               <dt>Guest welcome URL</dt>
@@ -368,7 +381,7 @@
             <form id="setupHaForm" class="setup-form">
               <label class="field">
                 <span>Home Assistant URL</span>
-                <input type="url" id="setupHaUrl" name="ha_url" placeholder="http://172.16.255.250:8123" required />
+                <input type="url" id="setupHaUrl" name="ha_url" placeholder="http://192.168.1.10:8123" required />
               </label>
               <label class="field">
                 <span>Long-lived access token</span>
@@ -490,9 +503,20 @@
         <div class="lockdown-header">
           <div>
             <h3 style="font-size:1.1rem; margin-bottom:0.25rem;">TV account &amp; streaming</h3>
-            <p style="color:var(--text-muted); font-size:0.85rem;">
-              Each TV uses <strong>guestcielodeloro@gmail.com</strong> as the only Google account on the main profile.
+            <p style="color:var(--text-muted); font-size:0.85rem;" id="guestAccountProvisioningHint">
+              Each TV for the selected property should use <strong id="guestAccountEmailLabel">—</strong> as the only Google account on the main profile.
             </p>
+            <form class="setup-inline-form guest-account-inline" id="guestPropertyAccountForm" style="margin-bottom:0.75rem;">
+              <label class="field" style="margin:0;">
+                <span style="font-size:0.8rem; color:var(--text-muted);">Property</span>
+                <select id="guestPropertySelect" class="setup-property-select" aria-label="Property for guest experience"></select>
+              </label>
+              <label class="field" style="margin:0; flex:1;">
+                <span style="font-size:0.8rem; color:var(--text-muted);">TV Google account</span>
+                <input type="email" id="guestPropertyAccount" placeholder="guest@example.com" autocomplete="off" required />
+              </label>
+              <button type="submit" class="btn btn-secondary btn-sm">Save account</button>
+            </form>
           </div>
           <div class="toolbar" style="margin:0;">
             <button class="btn btn-secondary btn-sm" id="btnSetStreamingSource" title="Use this TV as the template when mirroring apps to other TVs">Set as Source</button>
@@ -514,7 +538,7 @@
               <button type="button" class="btn btn-secondary btn-sm" id="btnMatrixClearAll">Clear all</button>
               <button type="button" class="btn btn-primary btn-sm" id="btnMatrixInstallAll" title="Install checked apps on all online TVs">Install on all TVs</button>
               <button type="button" class="btn btn-primary btn-sm" id="btnMatrixMatchSource" title="Install Main TV apps on every other TV">Match Main TV</button>
-              <button type="button" class="btn btn-primary btn-sm" id="btnMatrixScanStandard" title="Scan CDO Main TV and set the property streaming allow-list">Set standard from Main TV</button>
+              <button type="button" class="btn btn-primary btn-sm" id="btnMatrixScanStandard" title="Scan Main TV and set the property streaming allow-list">Set standard from Main TV</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btnMatrixRefresh" title="Reload install status from TVs">Refresh matrix</button>
             </div>
             <div id="streamingMatrixSummary" class="streaming-matrix-summary"></div>
@@ -589,9 +613,9 @@
                   <dt>Provision New TV</dt>
                   <dd>Full first-time setup on the selected TV: ADB reboot helper, hide debug UI, install guest launcher, sync streaming apps, open welcome. Use on a newly registered TV.</dd>
                   <dt>Setup this TV</dt>
-                  <dd>On <strong>CDO Main TV</strong>, this becomes <strong>Update all TVs from Main TV</strong> — saves welcome, updates the launcher, then rolls out to BED 2, BED 3, and any other online CDO TVs automatically. On other TVs, it only updates that one unit.</dd>
-                  <dt>Update all CDO TVs</dt>
-                  <dd>Saves welcome, then updates the launcher on every online CDO TV (Main TV first). Use this when Main TV is offline or you want a full-property push without selecting a TV.</dd>
+                  <dd>On <strong>Main TV</strong>, this becomes <strong>Update all TVs from Main TV</strong> — saves welcome, updates the launcher, then rolls out to BED 2, BED 3, and any other online property TVs automatically. On other TVs, it only updates that one unit.</dd>
+                  <dt>Update all property TVs</dt>
+                  <dd>Saves welcome, then updates the launcher on every online property TV (Main TV first). Use this when Main TV is offline or you want a full-property push without selecting a TV.</dd>
                   <dt>Restore Google TV</dt>
                   <dd>Re-enables stock Google TV launcher on the selected TV and removes guest-launcher lockdown. Use to undo guest mode.</dd>
                   <dt>ADB Reboot Helper</dt>
@@ -599,8 +623,8 @@
                   <dt>Apps only mode</dt>
                   <dd>Google TV setting that hides personalized recommendations on the home screen. The hub can request it via ADB; if that fails, enable manually under Settings → Accounts &amp; Sign In → your profile.</dd>
                 </dl>
-                <p class="settings-guide-note">After deploy, press <strong>Home</strong> on the TV and choose <strong>Cielo Guest Welcome → Always</strong> if prompted. Google TV blocks setting default home over ADB alone.</p>
-                <p class="settings-guide-note">If welcome does not return after closing Netflix or other apps: <strong>Settings → Accessibility → Cielo Guest Welcome</strong> and enable the service. Deploy tries to turn this on automatically; some TVs require manual approval.</p>
+                <p class="settings-guide-note">After deploy, press <strong>Home</strong> on the TV and choose <strong>Guest Welcome → Always</strong> if prompted. Google TV blocks setting default home over ADB alone.</p>
+                <p class="settings-guide-note">If welcome does not return after closing Netflix or other apps: <strong>Settings → Accessibility → Guest Welcome</strong> and enable the service. Deploy tries to turn this on automatically; some TVs require manual approval.</p>
               </section>
               <section class="settings-guide-section">
                 <h4>Streaming apps</h4>
@@ -618,10 +642,10 @@
               <section class="settings-guide-section">
                 <h4>Remote updates (no on-site visit needed)</h4>
                 <ul>
-                  <li><strong>Save welcome</strong> — hub automatically opens the updated screen on every online CDO TV within a few seconds.</li>
-                  <li><strong>TV reconnects</strong> — after a reboot or power cycle, the hub launches the CDO welcome app when the TV comes back online.</li>
+                  <li><strong>Save welcome</strong> — hub automatically opens the updated screen on every online property TV within a few seconds.</li>
+                  <li><strong>TV reconnects</strong> — after a reboot or power cycle, the hub launches the welcome app when the TV comes back online.</li>
                   <li><strong>While a TV is on</strong> — the welcome page checks the hub every 2 minutes and reloads when content or styling changes.</li>
-                  <li><strong>Launcher APK updates</strong> — use <strong>Update all CDO TVs</strong> after rebuilding the APK (hub cannot push a new APK without ADB).</li>
+                  <li><strong>Launcher APK updates</strong> — use <strong>Update all property TVs</strong> after rebuilding the APK (hub cannot push a new APK without ADB).</li>
                 </ul>
               </section>
               <section class="settings-guide-section">
@@ -631,7 +655,7 @@
                   <tbody>
                     <tr><td>Welcome text, WiFi, rules, guest name</td><td>Live page at <code>/guest/</code> updates on next load</td><td><strong>Save welcome</strong> — auto-pushes to online TVs</td></tr>
                     <tr><td>Property defaults only</td><td>No TV change until a new stay or reset</td><td><strong>Save property defaults</strong></td></tr>
-                    <tr><td>Launcher APK or screensaver</td><td>Requires reinstall on TV</td><td><strong>Update all TVs from Main TV</strong> or <strong>Update all CDO TVs</strong></td></tr>
+                    <tr><td>Launcher APK or screensaver</td><td>Requires reinstall on TV</td><td><strong>Update all TVs from Main TV</strong> or <strong>Update all property TVs</strong></td></tr>
                     <tr><td>Which streaming apps are allowed</td><td>Apps installed/hidden on TV</td><td><strong>Apply to TV</strong> (or mirror from source)</td></tr>
                   </tbody>
                 </table>
@@ -639,7 +663,7 @@
             </div>
           </details>
           <div class="guest-experience-section" id="guestExperienceSection">
-            <div class="section-title">Cielo guest welcome</div>
+            <div class="section-title">Guest welcome</div>
             <p class="kids-theme-lead">Content below is served live to TVs at <code>/guest/</code>. Use <strong>property defaults</strong> for baseline info and <strong>Save welcome</strong> (or check-in) when a guest arrives. See the <strong>Settings guide</strong> above for details on each control.</p>
             <div class="guest-welcome-layout">
               <div class="guest-welcome-form">
@@ -682,7 +706,7 @@
                   <p class="field-hint">Stay dates drive the outdoor weather forecast and hiking / hot springs recommendations on the TV welcome screen.</p>
                   <label class="kids-theme-field">
                     <span>Welcome title</span>
-                    <input type="text" id="guestWelcomeTitle" placeholder="Welcome to Cielo del Oro" />
+                    <input type="text" id="guestWelcomeTitle" placeholder="Welcome to Sample Property" />
                   </label>
                   <label class="kids-theme-field">
                     <span>Subtitle</span>
@@ -731,7 +755,7 @@
                   <div class="kids-theme-colors">
                     <label class="kids-theme-field">
                       <span>Weather location name</span>
-                      <input type="text" id="guestWeatherLocation" placeholder="Cielo del Oro" />
+                      <input type="text" id="guestWeatherLocation" placeholder="Sample Property" />
                     </label>
                     <label class="kids-theme-field">
                       <span>Latitude</span>
@@ -868,7 +892,7 @@
       </p>
       <div id="mdnsHint" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;"></div>
       <form id="pairForm">
-        <div class="form-group"><label>IP Address</label><input type="text" name="host" required placeholder="172.18.1.117" /></div>
+        <div class="form-group"><label>IP Address</label><input type="text" name="host" required placeholder="192.168.1.117" /></div>
         <div class="form-group"><label>Pairing Port</label><input type="number" name="pairing_port" required placeholder="42237" /><small style="color:var(--text-muted)">From “Pair device with pairing code” — usually 37xxx–45xxx</small></div>
         <div class="form-group"><label>Pairing Code</label><input type="text" name="code" required placeholder="123456" maxlength="6" /></div>
         <div class="form-group"><label>Connect Port (optional)</label><input type="number" name="connect_port" placeholder="auto" /><small style="color:var(--text-muted)">Leave blank unless auto-discovery fails</small></div>

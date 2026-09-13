@@ -60,6 +60,7 @@ class DeployLauncherBulkBody(BaseModel):
 class AppSlotBody(BaseModel):
     """Path 1 — staff creates a room slot before the TV installs the launcher app."""
     name: str = Field(..., min_length=1, max_length=120)
+    property_id: int = Field(default=1, ge=1)
     notes: str | None = Field(
         default=None,
         description="Optional label, e.g. Living room — app download path",
@@ -148,6 +149,8 @@ async def create_app_slot(body: AppSlotBody) -> dict[str, Any]:
         notes=(body.notes or "app-download").strip(),
         auto_provision=False,
     )
+    if body.property_id and body.property_id != 1:
+        await db.update_device(device_id, property_id=body.property_id)
     meta = await store.ensure_meta_for_device(device_id)
     device = await db.get_device(device_id)
     return {

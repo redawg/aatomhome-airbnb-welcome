@@ -8,7 +8,7 @@ This project evolves from **[redawg/adb-tv-hub](https://github.com/redawg/adb-tv
 cdo-production-2026-09-11
 ```
 
-Commit `83da484` — working CDO deployment with connect-all, live welcome preview, TV clear-logins, ADB port discovery fixes.
+Commit `83da484` — baseline deployment with connect-all, live welcome preview, TV clear-logins, ADB port discovery fixes.
 
 ## When forking tv-hub code
 
@@ -19,11 +19,11 @@ git checkout cdo-production-2026-09-11
 # Copy into aatomhome-airbnb-welcome/tv-hub/ when starting Phase 2
 ```
 
-Cherry-pick bugfixes from `adb-tv-hub` `main` into this repo as needed; do **not** merge room-control experiments back into CDO production without explicit review.
+Cherry-pick bugfixes from `adb-tv-hub` `main` into this repo as needed; do **not** merge room-control experiments back into legacy production without explicit review.
 
-## CDO production host
+## legacy production host
 
-- URL: http://172.18.1.137:8080
+- URL: http://192.168.2.1:8080
 - Image: `localhost/adb-tv-hub:latest` on hub host
 - Data: Podman volume `adb-tv-hub-data`
 

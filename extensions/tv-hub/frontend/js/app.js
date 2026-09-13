@@ -7,6 +7,23 @@ let registry = [];
 let activeHubView = "setup";
 let connectAllInProgress = false;
 let setupSelectedDeviceId = null;
+let activePropertyId = 1;
+let hubProperties = [];
+
+function withPropertyId(path) {
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}property_id=${activePropertyId}`;
+}
+
+function activeGuestAccountEmail() {
+  const prop = hubProperties.find(p => p.id === activePropertyId);
+  return prop?.guest_google_account || "guest@example.com";
+}
+
+function activePropertyName() {
+  const prop = hubProperties.find(p => p.id === activePropertyId);
+  return prop?.name || `Property ${activePropertyId}`;
+}
 
 const KEYCODES = {
   "Home": 3, "Back": 4, "Up": 19, "Down": 20, "Left": 21, "Right": 22,
@@ -976,12 +993,85 @@ function selectSetupDevice(deviceId) {
   if (panel) panel.hidden = true;
 }
 
+function renderPropertySelectOptions(selectEl, properties, selectedId) {
+  if (!selectEl) return;
+  if (!properties.length) {
+    selectEl.innerHTML = '<option value="1">Property 1</option>';
+    return;
+  }
+  selectEl.innerHTML = properties.map(p => (
+    `<option value="${p.id}"${p.id === selectedId ? " selected" : ""}>${esc(p.name)}</option>`
+  )).join("");
+}
+
+function syncPropertyAccountFields() {
+  const email = activeGuestAccountEmail();
+  const setupAcct = document.getElementById("setupGuestAccount");
+  const guestAcct = document.getElementById("guestPropertyAccount");
+  const label = document.getElementById("guestAccountEmailLabel");
+  if (setupAcct && document.activeElement !== setupAcct) setupAcct.value = email;
+  if (guestAcct && document.activeElement !== guestAcct) guestAcct.value = email;
+  if (label) label.textContent = email;
+  const hint = document.getElementById("setupGuestAccountHint");
+  if (hint) {
+    hint.textContent = `Property “${activePropertyName()}” — TVs should sign in with this Google account before Path 2 provisioning.`;
+  }
+}
+
+async function setActiveProperty(propertyId, { reload = true } = {}) {
+  const id = parseInt(propertyId, 10);
+  if (!id || id === activePropertyId) return;
+  try {
+    await api("/aatomhome/setup/active-property", {
+      method: "PUT",
+      body: { property_id: id },
+    });
+    activePropertyId = id;
+    syncPropertyAccountFields();
+    if (reload) {
+      await loadSetupStatus();
+      await loadGuestWelcomeForm?.();
+      await loadStreamingMatrix?.();
+      await loadGuestExperience();
+    }
+  } catch (err) {
+    toast(err.message || "Could not switch property", "error");
+  }
+}
+
+async function savePropertyGuestAccount(email, { silent = false } = {}) {
+  const trimmed = email.trim();
+  if (!trimmed || !trimmed.includes("@")) {
+    toast("Enter a valid Google account email", "error");
+    return false;
+  }
+  try {
+    const res = await api(`/aatomhome/properties/${activePropertyId}/guest-account`, {
+      method: "PUT",
+      body: { guest_google_account: trimmed },
+    });
+    const idx = hubProperties.findIndex(p => p.id === activePropertyId);
+    if (idx >= 0) hubProperties[idx].guest_google_account = res.guest_google_account;
+    syncPropertyAccountFields();
+    if (!silent) toast(`Saved TV account for ${activePropertyName()}`, "success");
+    return true;
+  } catch (err) {
+    toast(err.message || "Save failed", "error");
+    return false;
+  }
+}
+
 async function loadSetupStatus() {
   const checklist = document.getElementById("setupChecklist");
   if (checklist) checklist.innerHTML = '<li class="setup-checklist-item loading">Loading…</li>';
   try {
     const data = await api("/aatomhome/setup");
     const hub = data.hub || {};
+    hubProperties = data.properties || [];
+    activePropertyId = hub.active_property_id || activePropertyId || 1;
+    renderPropertySelectOptions(document.getElementById("setupPropertySelect"), hubProperties, activePropertyId);
+    renderPropertySelectOptions(document.getElementById("guestPropertySelect"), hubProperties, activePropertyId);
+    syncPropertyAccountFields();
     const ha = data.homeassistant || {};
     const integration = data.integration || {};
 
@@ -1202,12 +1292,13 @@ async function loadGuestSummary() {
     const s = await api(`/registry/${selectedDevice.id}/guest-status`);
     const guest = s.guest_account || s.guest_profile || {};
     const extraProfiles = s.extra_profile_count ?? Math.max(0, (s.profiles || []).length - 1);
+    const expectedAcct = s.guest_google_account || activeGuestAccountEmail();
     const guestLine = guest.configured
-      ? `Main profile: <strong>${esc(guest.accounts?.[0] || "guestcielodeloro@gmail.com")}</strong>`
-      : `<span style="color:var(--warning);">Guest account not on main profile — sign in with guestcielodeloro@gmail.com</span>`;
+      ? `Main profile: <strong>${esc(guest.accounts?.[0] || expectedAcct)}</strong>`
+      : `<span style="color:var(--warning);">Guest account not on main profile — sign in with ${esc(expectedAcct)}</span>`;
     const accountsLine = extraProfiles === 0
       ? "Only the main profile on TV (good)"
-      : `${extraProfiles} extra profile(s) on TV — remove them so only ${esc(s.guest_google_account || "guestcielodeloro@gmail.com")} remains`;
+      : `${extraProfiles} extra profile(s) on TV — remove them so only ${esc(expectedAcct)} remains`;
     text.innerHTML = `${guestLine}<br>${esc(accountsLine)}<br>`
       + `<span style="color:var(--text-muted);">${esc(s.recommendation || "")}</span>`;
   } catch (e) {
@@ -1229,24 +1320,24 @@ function updateGuestDeployUi() {
   if (setupBtn) {
     setupBtn.textContent = isMain ? "Update all TVs from Main TV" : "Setup this TV only";
     setupBtn.title = isMain
-      ? "Save welcome, update launcher on Main TV, then roll out to all other CDO TVs"
+      ? "Save welcome, update launcher on Main TV, then roll out to all other property TVs"
       : "Install/update launcher on the selected TV only (does not affect other TVs)";
   }
   if (deployAllBtn) {
-    deployAllBtn.textContent = "Update all CDO TVs";
-    deployAllBtn.title = "Save welcome and update launcher on every online CDO TV (Main TV first)";
+    deployAllBtn.textContent = "Update all property TVs";
+    deployAllBtn.title = "Save welcome and update launcher on every online property TV (Main TV first)";
   }
   if (hint) {
     const typeLabel = deviceTypeLabel(selectedDevice);
     const dtype = deviceProfile(selectedDevice).device_type || selectedDevice?.device_type;
     const typeHint = selectedDevice && dtype === "android_tv"
-      ? `<strong>${esc(typeLabel)}:</strong> guest welcome and streaming work the same — you may need to pick <strong>Cielo Guest Welcome → Always</strong> on Home and tune Energy Saving / WoWLAN for wake. `
+      ? `<strong>${esc(typeLabel)}:</strong> guest welcome and streaming work the same — you may need to pick <strong>Guest Welcome → Always</strong> on Home and tune Energy Saving / WoWLAN for wake. `
       : selectedDevice && dtype === "google_tv_streamer"
-        ? `<strong>${esc(typeLabel)}:</strong> use apps-only mode and set <strong>Cielo Guest Welcome → Always</strong> on first Home press. `
+        ? `<strong>${esc(typeLabel)}:</strong> use apps-only mode and set <strong>Guest Welcome → Always</strong> on first Home press. `
         : "";
     hint.innerHTML = typeHint + (isMain
-      ? "<strong>Main TV selected:</strong> use <strong>Update all TVs from Main TV</strong> to push welcome content and the launcher to every CDO TV in one step."
-      : "Select <strong>CDO Main TV</strong> to roll out updates to all TVs, or use <strong>Update all CDO TVs</strong> anytime.");
+      ? "<strong>Main TV selected:</strong> use <strong>Update all TVs from Main TV</strong> to push welcome content and the launcher to every property TV in one step."
+      : "Select <strong>Main TV</strong> to roll out updates to all TVs, or use <strong>Update all property TVs</strong> anytime.");
   }
   updateDeviceTypeUi();
 }
@@ -1443,7 +1534,7 @@ function updateGuestWelcomeMeta(data) {
 
 async function loadGuestWelcome() {
   try {
-    const data = await api("/guest-welcome");
+    const data = await api(withPropertyId("/guest-welcome"));
     guestWelcomeDefaults = data.defaults || {};
     fillGuestWelcomeForm(data.welcome || {});
     fillGuestStayDates(data.active_stay);
@@ -1481,7 +1572,7 @@ function refreshGuestWelcomePreview() {
 }
 
 async function saveGuestWelcome() {
-  const r = await api("/guest-welcome", { method: "PUT", body: collectGuestWelcomeForm() });
+  const r = await api(withPropertyId("/guest-welcome"), { method: "PUT", body: collectGuestWelcomeForm() });
   guestWelcomeDefaults = r.defaults || guestWelcomeDefaults;
   if (r.welcome) fillGuestWelcomeForm(r.welcome);
   updateGuestWelcomeMeta(r);
@@ -1497,7 +1588,7 @@ async function saveGuestWelcomeWithToast() {
 }
 
 async function saveGuestWelcomeDefaults() {
-  const r = await api("/guest-welcome/defaults", { method: "PUT", body: collectGuestWelcomeForm(false) });
+  const r = await api(withPropertyId("/guest-welcome/defaults"), { method: "PUT", body: collectGuestWelcomeForm(false) });
   guestWelcomeDefaults = r.defaults || guestWelcomeDefaults;
   if (r.welcome) fillGuestWelcomeForm(r.welcome);
   refreshGuestWelcomePreview();
@@ -1523,7 +1614,7 @@ function loadDefaultsIntoForm() {
 async function resetWelcomeToDefaults() {
   if (!confirm("Reset the live welcome to property defaults?\n\nClears per-stay overrides (including guest name).")) return;
   try {
-    const r = await api("/guest-welcome/reset", { method: "POST" });
+    const r = await api(withPropertyId("/guest-welcome/reset"), { method: "POST" });
     guestWelcomeDefaults = r.defaults || guestWelcomeDefaults;
     fillGuestWelcomeForm(r.welcome || {});
     updateGuestWelcomeMeta({ overrides: {}, active_stay: null });
@@ -1538,7 +1629,7 @@ async function checkInGuest() {
   const checkoutTime = document.getElementById("guestCheckoutTime")?.value?.trim();
   const { check_in, check_out } = collectGuestStayDates();
   try {
-    const r = await api("/guest-stays/check-in", {
+    const r = await api(withPropertyId("/guest-stays/check-in"), {
       method: "POST",
       body: {
         guest_name: guestName,
@@ -1563,7 +1654,7 @@ async function checkOutGuest() {
     "• Signs out of Netflix, Disney+, and other streaming apps on all online TVs"
   )) return;
   try {
-    const r = await api("/guest-stays/check-out?clear_streaming=true", { method: "POST" });
+    const r = await api(withPropertyId("/guest-stays/check-out?clear_streaming=true"), { method: "POST" });
     fillGuestWelcomeForm(r.welcome || {});
     fillGuestStayDates(null);
     updateGuestWelcomeMeta({ active_stay: null, overrides: {} });
@@ -1627,7 +1718,7 @@ async function loadGuestExperience() {
   const statusEl = document.getElementById("guestExperienceStatus");
   const noteEl = document.getElementById("guestExperienceNote");
   try {
-    const config = await api("/guest-experience");
+    const config = await api(withPropertyId("/guest-experience"));
     if (noteEl && config.guest_page_url) {
       noteEl.innerHTML = `TVs load the live welcome page at <a href="${esc(config.guest_page_url)}" target="_blank" rel="noopener">${esc(config.guest_page_url)}</a>`;
     }
@@ -1638,11 +1729,12 @@ async function loadGuestExperience() {
     const s = await api(`/registry/${selectedDevice.id}/guest-experience/status`);
     const launcher = s.launcher || {};
     if (statusEl) {
+      const expectedAcct = s.guest_experience?.guest_google_account || s.guest_google_account || activeGuestAccountEmail();
       const accountLine = s.guest_account_configured
-        ? `Signed in as <strong>guestcielodeloro@gmail.com</strong>`
-        : `<span style="color:var(--warning);">Sign in with guestcielodeloro@gmail.com on the main profile</span>`;
+        ? `Signed in as <strong>${esc(expectedAcct)}</strong>`
+        : `<span style="color:var(--warning);">Sign in with ${esc(expectedAcct)} on the main profile</span>`;
       const roleLine = isSourceOrMainTv(selectedDevice)
-        ? `Role: <strong>Main TV</strong> — updates here roll out to all CDO TVs`
+        ? `Role: <strong>Main TV</strong> — updates here roll out to all property TVs`
         : `Role: bedroom/other TV`;
       statusEl.innerHTML = [
         accountLine,
@@ -1665,7 +1757,7 @@ async function setupGuestExperience() {
   } catch (e) { toast(e.message, "error"); return; }
   const isMain = isSourceOrMainTv();
   const msg = isMain
-    ? "Update guest welcome on Main TV and roll out to all other CDO TVs?\n\nSaves welcome content, reinstalls the launcher, configures screensaver, and syncs streaming apps on each online TV."
+    ? "Update guest welcome on Main TV and roll out to all other property TVs?\n\nSaves welcome content, reinstalls the launcher, configures screensaver, and syncs streaming apps on each online TV."
     : "Set up guest welcome launcher on this TV only?\n\nInstalls on the main profile, syncs streaming apps, and opens the welcome screen. Other TVs are not changed.";
   if (!confirm(msg)) return;
   hubLog({
@@ -1711,7 +1803,7 @@ async function deployGuestExperienceAll() {
     await saveGuestWelcome();
   } catch (e) { toast(e.message, "error"); return; }
   if (!confirm(
-    "Update all CDO TVs?\n\nSaves welcome content, then installs/updates the guest launcher on every online TV (Main TV first). Welcome text itself is live from the hub — no redeploy needed for text-only edits."
+    "Update all property TVs?\n\nSaves welcome content, then installs/updates the guest launcher on every online TV (Main TV first). Welcome text itself is live from the hub — no redeploy needed for text-only edits."
   )) return;
   hubLog({ level: "info", category: "setup", message: "Deploy all TVs started" });
   try {
@@ -1821,7 +1913,7 @@ async function rebootSelectedTv() {
 
 async function wakeBedroomTvs() {
   if (!confirm(
-    "Wake CDO BED 2 and CDO BED 3 and reset guest welcome on each?\n\n"
+    "Wake Bedroom TV 2 and Bedroom TV 3 and reset guest welcome on each?\n\n"
     + "Press power on each bedroom TV remote if they stay offline."
   )) return;
   hubLog({ level: "info", category: "power", message: "Wake bedroom TVs started" });
@@ -1989,7 +2081,7 @@ async function provisionNewTv() {
   if (!selectedDevice || !isDeviceOnline()) { toast("Connect a TV first", "error"); return; }
   await saveGuestWelcome();
   const skipPair = confirm(
-    "Full provision (CDO / Google TV lockdown)?\n\n"
+    "Full provision (Google TV lockdown lockdown)?\n\n"
     + "OK = continue full provision (ADB helper, streaming, apps-only).\n"
     + "Cancel = use Push welcome app instead (recommended for Shield / simple deploy)."
   );
@@ -2394,7 +2486,7 @@ async function loadStreamingMatrix() {
     wrap.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; padding:1rem;">Loading install matrix…</p>';
   }
   try {
-    const matrix = await api("/registry/streaming-apps/matrix?property_id=1", {
+    const matrix = await api(`/registry/streaming-apps/matrix?property_id=${activePropertyId}`, {
       timeout: API_LONG_TIMEOUT_MS,
     });
     streamingMatrixSelected = null;
@@ -2450,8 +2542,8 @@ async function installMatrixBatch({ matchSource = false } = {}) {
 
   try {
     const body = matchSource
-      ? { match_source: true, property_id: 1 }
-      : { packages, device_ids: "all", property_id: 1 };
+      ? { match_source: true, property_id: activePropertyId }
+      : { packages, device_ids: "all", property_id: activePropertyId };
     const r = await api("/registry/streaming-apps/install-batch", {
       method: "POST",
       body,
@@ -2474,10 +2566,10 @@ async function installMatrixBatch({ matchSource = false } = {}) {
 
 async function scanStreamingStandard() {
   if (streamingMatrixBusy) return;
-  const sourceName = streamingMatrixData?.source_device_name || "CDO Main TV";
+  const sourceName = streamingMatrixData?.source_device_name || "Main TV";
   if (!confirm(
     `Scan ${sourceName} for installed streaming apps and set that as the property standard?\n\n`
-    + "This updates the allowed app list on all CDO TVs. Apps not on Main TV (e.g. BritBox, NBA) will be removed from the allow-list.\n\n"
+    + "This updates the allowed app list on all property TVs. Apps not on Main TV (e.g. BritBox, NBA) will be removed from the allow-list.\n\n"
     + "Installed apps are not uninstalled — use Clear streaming logins to sign out between stays.",
   )) return;
 
@@ -2489,7 +2581,7 @@ async function scanStreamingStandard() {
   try {
     const r = await api("/registry/streaming-apps/scan-standard", {
       method: "POST",
-      body: { property_id: 1, propagate_allow_list: true },
+      body: { property_id: activePropertyId, propagate_allow_list: true },
       timeout: API_LONG_TIMEOUT_MS,
     });
     const extras = (r.scan?.extras_on_device || []).map(e => e.package);
@@ -2564,7 +2656,7 @@ function renderStreamingApps(catalog) {
     if (hasGuestAccount) {
       text += " Apps install on the main profile via ADB (APKs from source TV). Click Apply to sync.";
     } else {
-      text += " Sign in with guestcielodeloro@gmail.com on the TV, then Apply again.";
+      text += ` Sign in with ${activeGuestAccountEmail()} on the TV, then Apply again.`;
     }
     note.textContent = text;
   }
@@ -2706,7 +2798,7 @@ function renderGuestStatus(status) {
       <div class="label">Guest Google account (main profile)</div>
       <div class="value" style="font-size:0.85rem;">${guest.configured
     ? `${esc(guest.accounts?.[0] || status.guest_google_account)}`
-    : "Not configured — sign in with guestcielodeloro@gmail.com on the TV"}</div>
+    : `Not configured — sign in with ${esc(status.guest_google_account || activeGuestAccountEmail())} on the TV`}</div>
     </div>
     <div class="streaming-apps-section">
       <div class="section-title">Allowed streaming apps</div>
@@ -2758,7 +2850,7 @@ async function clearStreamingLogins() {
 }
 
 async function clearStreamingLoginsAll() {
-  if (!confirm("Clear streaming app sign-ins on all connected CDO TVs?\n\nGuests will need to sign in again on each streaming app.")) return;
+  if (!confirm("Clear streaming app sign-ins on all connected property TVs?\n\nGuests will need to sign in again on each streaming app.")) return;
   try {
     const r = await api("/registry/clear-streaming-logins-all", {
       method: "POST",
@@ -2832,7 +2924,7 @@ document.getElementById("appSlotForm")?.addEventListener("submit", async e => {
   try {
     const res = await api("/aatomhome/registry/app-slot", {
       method: "POST",
-      body: JSON.stringify({ name, notes: notes || undefined }),
+      body: { name, notes: notes || undefined, property_id: activePropertyId },
     });
     closeModal("appSlotModal");
     e.target.reset();

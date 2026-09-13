@@ -1,16 +1,32 @@
 # Aatomhome — Airbnb Home Automation Welcome Screen
 
-Per-room guest welcome and **control center** for Airbnb-style stays: room name on each TV, plus Home Assistant controls (lights, fan, blinds, and other selected devices).
+Per-room guest welcome and **control center** for short-term rental properties: each TV shows its room name, plus Home Assistant controls (lights, fan, blinds, and other selected devices).
 
-This project is **separate from the frozen CDO production hub**. The live Cielo del Oro stack stays on its pinned release:
+## Quick start
 
-| | CDO production (do not break) | This project |
-|---|-------------------------------|--------------|
-| Repo | [redawg/adb-tv-hub](https://github.com/redawg/adb-tv-hub) @ `cdo-production-2026-09-11` | `aatomhome-airbnb-welcome` |
-| Host | `172.18.1.137` (CDO LAN) | forest-ha / aatomhome (pilot) |
-| Scope | Property-wide guest welcome + streaming | Room name + HA device controls per TV |
+| Step | Action |
+|------|--------|
+| **1. tv-hub** | Run the hub container on a Linux host on the same LAN as your TVs — see [docs/DEPLOY.md](docs/DEPLOY.md) |
+| **2. HACS** | Add this repo as a custom integration — see [docs/HACS.md](docs/HACS.md) |
+| **3. TVs** | Install the guest launcher APK and claim each TV — see [docs/TV-PROVISIONING.md](docs/TV-PROVISIONING.md) |
 
-## Vision
+```bash
+./scripts/configure-deploy.sh --type container --host 192.168.1.100 --port 8080
+./scripts/deploy-profile.sh container
+```
+
+## HACS (Home Assistant)
+
+This repository is **public** and uses the standard HACS layout (`hacs.json` + `custom_components/aatomhome_airbnb_welcome/`).
+
+1. HACS → **Integrations** → ⋮ → **Custom repositories**
+2. URL: `https://github.com/redawg/aatomhome-airbnb-welcome`
+3. Category: **Integration**
+4. Install **Aatomhome Airbnb Welcome** → restart HA → add integration with your hub URL
+
+Full steps: [docs/HACS.md](docs/HACS.md)
+
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -20,91 +36,53 @@ flowchart LR
   Hub -->|"service calls"| HA
 ```
 
-- **Home Assistant** — source of truth for devices; staff configure which entities appear in each room.
-- **tv-hub** — fork/evolution of adb-tv-hub with room config + HA bridge (TV never holds HA tokens).
-- **Welcome app** — hero shows room name; new **Room controls** section for lights, fan, blinds.
+- **Home Assistant** — device source of truth; staff pick which entities appear per room (roadmap).
+- **tv-hub** — ADB + guest API server (evolved from [adb-tv-hub](https://github.com/redawg/adb-tv-hub)); TVs never hold HA tokens.
+- **Guest launcher** — WebView home app loading the hub welcome page.
 
-## Repository layout (planned)
+Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · Upstream baseline: [docs/UPSTREAM.md](docs/UPSTREAM.md)
+
+## Repository layout
 
 ```
 aatomhome-airbnb-welcome/
-  tv-hub/                    # FastAPI + ADB server (fork from adb-tv-hub tag)
-  guest-welcome/             # TV WebView UI + room controls
-  homeassistant/
-    custom_components/
-      aatomhome_airbnb_welcome/   # HA integration: turnover + entity picker per TV
-  custom_components/         # HA integration (HACS layout)
-  deploy/
-    profiles/container/        # Podman quadlets for tv-hub
+  custom_components/aatomhome_airbnb_welcome/   # HA integration (HACS)
+  extensions/tv-hub/                          # Hub overlays (merged into upstream on deploy)
+  guest-launcher/                               # Android TV launcher source + prebuilt APK
+  deploy/profiles/                              # Podman quadlet profiles
   docs/
-    ARCHITECTURE.md
-    UPSTREAM.md
+  hacs.json
 ```
 
-## Upstream
+## Implementation status
 
-Fork baseline: **adb-tv-hub** tag [`cdo-production-2026-09-11`](https://github.com/redawg/adb-tv-hub/releases/tag/cdo-production-2026-09-11).
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 1 | HA integration — connect, check-in/out | Done |
+| 2 | Room name sync per TV | Done |
+| 3 | HA bridge (hub proxies service calls) | Planned |
+| 4 | Room controls on TV welcome UI | Planned |
+| 5 | HA entity picker per room | Planned |
 
-Do not deploy experimental builds to the CDO production host without a maintenance plan.
-
-## Implementation phases
-
-1. HA custom integration — connect-all, guest check-in/out on forest-ha
-2. Room config schema — `room_name` + per-TV welcome overrides
-3. HA bridge — hub proxies light/cover/fan actions
-4. TV room controls UI — D-pad friendly tiles
-5. HA entity picker — assign devices per room from HA
-6. Container + HACS deploy paths
-
-Full plan: see `.cursor/plans/ha_room_control_center_e561c219.plan.md` in the Cursor workspace or `docs/ARCHITECTURE.md`.
-
-## Status
-
-| Component | Status |
-|-----------|--------|
-| **HA integration** | Phase 1 + Phase 2 room_config sync (`v0.2.0`) |
-| **tv-hub extensions** | Claim/self-register, room-config API, TV agent WS + HTTP poll |
-| **Guest launcher** | Hub URL prefs, claim screen, outbound TV agent (source; rebuild APK) |
-| **Deploy types** | `container` (tv-hub) + `homeassistant` (HACS integration) — [`deploy/profiles/README.md`](deploy/profiles/README.md) |
-
-**Container deploy** — `./scripts/configure-deploy.sh --type container --host YOUR_IP --port 8080` then `./scripts/deploy-profile.sh container`.
-
-**HA integration** — HACS ([`docs/HACS.md`](docs/HACS.md)) or `./scripts/deploy-profile.sh homeassistant`.
-
-**Networking** — [`docs/NETWORKING.md`](docs/NETWORKING.md) · **HA Green** — [`docs/GREEN-HA.md`](docs/GREEN-HA.md)
-
-**New TV setup** — [`docs/TV-PROVISIONING.md`](docs/TV-PROVISIONING.md) (APK download, hub URL / QR, room code claim)
-
-**Dual-hub TV test** — [`docs/TEST-FRAMEWORK.md`](docs/TEST-FRAMEWORK.md) · `./scripts/deploy-test-framework.sh`
-
-CDO production is frozen; active development happens here.
-
-### Deploy with an AI agent or from CLI
-
-1. Copy [`deploy/env.template`](deploy/env.template) → `deploy/.env` and fill in answers from [`deploy/QUESTIONNAIRE.md`](deploy/QUESTIONNAIRE.md)
-   - **forest-ha:** start from [`deploy/forest-ha/env.example`](deploy/forest-ha/env.example)
-2. `./scripts/build.sh` — verify image builds
-3. `./scripts/deploy.sh` — install on host
-
-Agents: read [`AGENTS.md`](AGENTS.md) and [`.cursor/skills/aatomhome-deploy/SKILL.md`](.cursor/skills/aatomhome-deploy/SKILL.md).
-
-### Prebuilt Android launcher (MIT)
+## Prebuilt guest launcher (MIT)
 
 | Asset | Path |
 |-------|------|
-| APK | [`guest-launcher/releases/aatomhome-guest-welcome.apk`](guest-launcher/releases/aatomhome-guest-welcome.apk) |
-| SHA256 | [`guest-launcher/releases/aatomhome-guest-welcome.apk.sha256`](guest-launcher/releases/aatomhome-guest-welcome.apk.sha256) |
-| License | [`LICENSE`](LICENSE) |
+| APK | [guest-launcher/releases/aatomhome-guest-welcome.apk](guest-launcher/releases/aatomhome-guest-welcome.apk) |
+| SHA256 | [guest-launcher/releases/aatomhome-guest-welcome.apk.sha256](guest-launcher/releases/aatomhome-guest-welcome.apk.sha256) |
 
-Package `com.cielodeloro.guestwelcome` — WebView home app for the hub welcome / control screen.
+Android package id: `com.cielodeloro.guestwelcome` (legacy id from upstream; user-visible name is **Guest Welcome**).
 
-### What you need before deploy
+## Documentation
 
-| Item | Required for |
-|------|----------------|
-| `HUB_PUBLIC_URL` | TVs load welcome page |
-| `HA_URL` + long-lived token | HA integration & future room controls |
-| `TEMPEST_*` (optional) | Weather on welcome screen |
-| TV wireless debugging + pairing | Register each TV in hub |
+| Topic | Doc |
+|-------|-----|
+| Container deploy | [docs/DEPLOY.md](docs/DEPLOY.md) |
+| TV provisioning (APK + claim) | [docs/TV-PROVISIONING.md](docs/TV-PROVISIONING.md) |
+| Networking | [docs/NETWORKING.md](docs/NETWORKING.md) |
+| HA Green (integration only) | [docs/GREEN-HA.md](docs/GREEN-HA.md) |
+| Deploy questionnaire | [deploy/QUESTIONNAIRE.md](deploy/QUESTIONNAIRE.md) |
 
-Full checklist: [`docs/DEPLOY.md`](docs/DEPLOY.md)
+## License
+
+MIT — see [LICENSE](LICENSE). Guest launcher derived from upstream adb-tv-hub; see [NOTICE.md](NOTICE.md) if present.

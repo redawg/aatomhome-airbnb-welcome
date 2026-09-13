@@ -2,9 +2,9 @@
 
 ## Problem
 
-CDO today uses a **property-wide** welcome screen. For multi-room Airbnb-style properties, each TV should show:
+Many short-term rentals use a **property-wide** welcome screen on every TV. For multi-room stays, each TV should show:
 
-- **Room name** (Casita, Bedroom 2, …)
+- **Room name** (Guest suite, Bedroom 2, …)
 - **Selected HA controls** for that room (lights, ceiling fan, blinds)
 
 Staff should configure rooms from **Home Assistant**, not by SSH or JSON on each TV.
@@ -43,8 +43,9 @@ New concepts on top of existing guest welcome + ADB stack:
 
 ## Deploy target
 
-**forest-ha** on aatomhome (`172.16.1.30`) — can reach CDO TVs over VPN for pilot testing without touching `172.18.1.137` production until ready.
+Typical pilot: tv-hub on a Linux host on the property LAN (`192.168.1.100:8080`) with Home Assistant on the same network (`192.168.1.10:8123`).
 
 ## Related
 
-- Frozen CDO prod: [adb-tv-hub/deploy/cdo](https://github.com/redawg/adb-tv-hub/tree/main/deploy/cdo)
+- Upstream baseline: [docs/UPSTREAM.md](UPSTREAM.md)
+- [adb-tv-hub](https://github.com/redawg/adb-tv-hub)

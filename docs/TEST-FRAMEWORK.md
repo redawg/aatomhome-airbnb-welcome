@@ -7,7 +7,7 @@ Test **two tv-hub backends** from one TV (dual claim) without rebuilding the APK
 | Hub A | `hub-a` | `http://192.168.1.10:8080` | Primary / co-located with HA |
 | Hub B | `hub-b` | `http://192.168.1.11:18080` | Secondary / remote / different VLAN |
 
-URLs are editable in the guest launcher claim UI. Legacy IDs `forest-lan` and `infra3` map to Hub A / Hub B.
+URLs are editable in the guest launcher claim UI. Legacy IDs `forest-lan` and `lab host` map to Hub A / Hub B.
 
 **Home Assistant:** add **two** integration instances (HACS) — one per hub URL.
 

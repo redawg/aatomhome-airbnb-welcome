@@ -110,23 +110,23 @@ def build_profile(
         manual_notes.extend([
             "Shield: enable Developer options → USB debugging + Network debugging.",
             "On first connect, approve the RSA fingerprint on the Shield (Always allow).",
-            "Press Home → Cielo Guest Welcome → Always to set the guest launcher.",
+            "Press Home → Guest Welcome → Always to set the guest launcher.",
             "Network ADB stays on after reboot when Network debugging is enabled.",
         ])
     elif is_android_tv:
         manual_notes.extend([
-            "Press Home and choose Cielo Guest Welcome → Always if prompted "
+            "Press Home and choose Guest Welcome → Always if prompted "
             "(many Android TVs cannot set default home over ADB).",
             "For reliable wake-from-standby: set picture mode to Energy Saving and enable "
             "WoWLAN / network standby in the TV's network settings.",
         ])
     elif is_streamer:
         manual_notes.append(
-            "After deploy, press Home and choose Cielo Guest Welcome → Always if prompted."
+            "After deploy, press Home and choose Guest Welcome → Always if prompted."
         )
     elif is_google:
         manual_notes.append(
-            "Enable apps-only mode on the TV if needed. Press Home → Cielo Guest Welcome → Always."
+            "Enable apps-only mode on the TV if needed. Press Home → Guest Welcome → Always."
         )
 
     return {

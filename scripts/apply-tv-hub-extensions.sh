@@ -23,12 +23,14 @@ if [[ -d "$EXT_ROOT/frontend" ]]; then
   echo "==> Applied frontend extensions"
 fi
 
-for overlay in device_detection.py; do
+for overlay in device_detection.py guest_profile.py guest_account_resolve.py; do
   if [[ -f "$EXT_ROOT/backend/$overlay" ]]; then
     cp "$EXT_ROOT/backend/$overlay" "$DEST/backend/$overlay"
     echo "==> Applied backend overlay $overlay"
   fi
 done
+
+python3 "$ROOT/scripts/patch-tv-hub-guest-account.py" "$DEST"
 
 python3 - "$MAIN" "$MARKER" <<'PY'
 import re

@@ -10,19 +10,19 @@ Copy completed answers into `deploy/.env` (from [`env.template`](env.template)).
 
 | Question | Example | Required |
 |----------|---------|----------|
-| Where will **tv-hub** run? | `aatomhome.theschoenfelds.dom` (172.16.1.30) or on-site property LAN | Yes |
-| Where will **Home Assistant** run? | Same host as tv-hub (`forest-ha`) or separate | Yes |
-| Can the hub host reach TV IPs over the network? | VPN to 172.18.1.0/24 — yes/no | Yes |
+| Where will **tv-hub** run? | `hub.example.com` (192.168.1.10) or on-site property LAN | Yes |
+| Where will **Home Assistant** run? | Same host as tv-hub (`home-assistant-host`) or separate | Yes |
+| Can the hub host reach TV IPs over the network? | VPN to 192.168.2.0/24 — yes/no | Yes |
 | Podman install style? | `rootless` (user systemd) or `rootful` | Yes |
 
 ## 2. Network URLs
 
 | Question | Example | Required |
 |----------|---------|----------|
-| **HUB_PUBLIC_URL** — URL TVs and browsers use for the hub | `http://172.18.1.137:8080` | Yes |
-| **HUB_GUEST_URL** — welcome page (usually hub + `/guest/`) | `http://172.18.1.137:8080/guest/` | Yes |
+| **HUB_PUBLIC_URL** — URL TVs and browsers use for the hub | `http://192.168.2.1:8080` | Yes |
+| **HUB_GUEST_URL** — welcome page (usually hub + `/guest/`) | `http://192.168.2.1:8080/guest/` | Yes |
 | **HA_URL** — Home Assistant base URL (for hub → HA bridge, Phase 3+) | `http://127.0.0.1:8123` | For HA controls |
-| Property / site name | `Cielo del Oro` | Yes |
+| Property / site name | `Sample Property` | Yes |
 
 ## 3. API keys and secrets
 
@@ -43,7 +43,7 @@ Never commit `deploy/.env` to git.
 | HA version? | 2024.x+ recommended |
 | Integration install path? | e.g. `/config/custom_components/aatomhome_airbnb_welcome` |
 | Will staff use HA automations for guest check-in/out? | yes/no — maps to integration services |
-| Rooms / Areas already defined in HA? | List areas (Casita, Bed 2, …) for entity picker phase |
+| Rooms / Areas already defined in HA? | List areas (Living room, Bedroom 2, …) for entity picker phase |
 
 ## 5. TVs to register
 
@@ -51,9 +51,9 @@ For each TV, collect:
 
 | Field | Example |
 |-------|---------|
-| Display name | `CDO Casita` |
-| IP address | `172.18.1.204` |
-| Room name (for welcome screen) | `Casita` |
+| Display name | `Guest Suite` |
+| IP address | `192.168.2.50` |
+| Room name (for welcome screen) | `Guest suite` |
 | HA area (optional) | `casita` |
 | MAC (optional, for wake-on-LAN) | `aa:bb:cc:dd:ee:ff` |
 
@@ -64,7 +64,7 @@ Wireless debugging must be enabled; first pairing uses a **6-digit code** from t
 | Question | Default |
 |----------|---------|
 | Use prebuilt APK from repo? | Yes — [`guest-launcher/releases/aatomhome-guest-welcome.apk`](../guest-launcher/releases/aatomhome-guest-welcome.apk) |
-| Patch hub URL into APK before deploy? | **Yes** if `HUB_PUBLIC_URL` ≠ baked-in CDO URL |
+| Patch hub URL into APK before deploy? | **Yes** if `HUB_PUBLIC_URL` ≠ default baked-in hub URL |
 | Verify SHA256? | Compare to [`aatomhome-guest-welcome.apk.sha256`](../guest-launcher/releases/aatomhome-guest-welcome.apk.sha256) |
 
 ## 7. Post-deploy verification
@@ -81,5 +81,5 @@ Then open hub UI → **Connect all TVs** → register or confirm each TV.
 
 ## 8. Out of scope for first deploy
 
-- Do not modify **CDO production** (`172.18.1.137` pinned tag) unless user explicitly requests migration
+- Do not modify **legacy production** (`192.168.2.1` pinned tag) unless user explicitly requests migration
 - Room control UI requires Phase 2–3 hub + HA bridge (not yet in upstream tv-hub)

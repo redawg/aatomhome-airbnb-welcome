@@ -1,4 +1,4 @@
-"""Push guest launcher APK to ADB-connected TVs (Path 2) — no CDO guest-account gate."""
+"""Push guest launcher APK to ADB-connected TVs (Path 2) — no guest-account gate."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ async def deploy_launcher(
 ) -> dict[str, Any]:
     """
     Install or update the bundled guest launcher APK on a connected TV.
-    Works for Shield, Google TV, and Android TV without the CDO guest Google account.
+    Works for Shield, Google TV, and Android TV without the guest Google account.
     """
     device_id = int(device["id"])
     serial = await _require_connected(device)

@@ -1,6 +1,6 @@
 [Unit]
 Description=Aatomhome tv-hub — Forest Home guest welcome (ADB + hub UI)
-Documentation=https://github.com/redawg/aatomhome-airbnb-welcome/blob/main/deploy/forest-home/README.md
+Documentation=https://github.com/redawg/aatomhome-airbnb-welcome/blob/main/deploy/sample-property/README.md
 After=network-online.target
 Wants=network-online.target
 
