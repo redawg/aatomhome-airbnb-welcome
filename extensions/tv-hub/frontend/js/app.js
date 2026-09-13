@@ -923,6 +923,12 @@ function renderSetupTvList(tvs) {
 
   const roomBtn = document.getElementById("btnSetupRoomCode");
   if (roomBtn) roomBtn.disabled = !setupSelectedDeviceId;
+  const selected = (tvs?.devices || []).find(d => d.id === setupSelectedDeviceId);
+  const adbOnline = selected?.connection_state === "device";
+  const pushBtn = document.getElementById("btnSetupPushWelcome");
+  const apkBtn = document.getElementById("btnSetupUpdateApk");
+  if (pushBtn) pushBtn.disabled = !adbOnline;
+  if (apkBtn) apkBtn.disabled = !adbOnline;
 
   if (pendingBox) {
     const pending = tvs?.pending_devices || [];
@@ -960,6 +966,12 @@ function selectSetupDevice(deviceId) {
   });
   const roomBtn = document.getElementById("btnSetupRoomCode");
   if (roomBtn) roomBtn.disabled = !deviceId;
+  const selected = (registry || []).find(d => d.id === deviceId);
+  const adbOnline = selected?.connection_state === "device";
+  const pushBtn = document.getElementById("btnSetupPushWelcome");
+  const apkBtn = document.getElementById("btnSetupUpdateApk");
+  if (pushBtn) pushBtn.disabled = !adbOnline;
+  if (apkBtn) apkBtn.disabled = !adbOnline;
   const panel = document.getElementById("setupRoomCodePanel");
   if (panel) panel.hidden = true;
 }
@@ -1896,24 +1908,112 @@ async function runAdbAutoEnable(creds) {
   return r;
 }
 
+async function deployLauncherToDevice(deviceId, options = {}) {
+  const {
+    launchWelcome = true,
+    forceReinstall = true,
+    label = "Push welcome app",
+  } = options;
+  const device = (registry || []).find(d => d.id === deviceId) || selectedDevice;
+  if (!device) { toast("Select a TV first", "error"); return null; }
+  if (device.connection_state !== "device" && !isDeviceOnline()) {
+    toast("Connect the TV over ADB first (Pair → Connect)", "error");
+    return null;
+  }
+  toast(`${label} — installing from hub APK…`);
+  hubLog({
+    level: "info",
+    category: "setup",
+    message: label,
+    deviceName: device?.name,
+    deviceId: device.id,
+  });
+  try {
+    const r = await api(`/aatomhome/registry/${device.id}/deploy-launcher`, {
+      method: "POST",
+      timeout: API_MIRROR_TIMEOUT_MS,
+      body: JSON.stringify({
+        set_home: true,
+        launch_welcome: launchWelcome,
+        force_reinstall: forceReinstall,
+        start_agent: true,
+        auto_claim: true,
+      }),
+    });
+    renderProvisionNote(r);
+    hubLogOperationResponse(label, r, {
+      category: "setup",
+      deviceName: device?.name,
+      deviceId: device.id,
+    });
+    toast(r.message || label, r.ok ? "success" : "error");
+    await loadRegistry();
+    await loadGuestExperience();
+    return r;
+  } catch (e) {
+    toast(e.message, "error");
+    return null;
+  }
+}
+
+async function deployLauncherToAllOnline() {
+  if (!confirm(
+    "Push welcome app to every TV that is online over ADB?\n\n"
+    + "Installs/updates the launcher APK from this hub on each connected TV."
+  )) return;
+  hubLog({ level: "info", category: "setup", message: "Push welcome app to all online" });
+  try {
+    const r = await api("/aatomhome/registry/deploy-launcher", {
+      method: "POST",
+      timeout: API_MIRROR_TIMEOUT_MS,
+      body: JSON.stringify({
+        online_only: true,
+        set_home: true,
+        launch_welcome: true,
+        force_reinstall: true,
+      }),
+    });
+    const lines = (r.results || []).map(x =>
+      `${x.device_name || x.device_id}: ${x.ok ? "OK" : x.message || "failed"}`
+    );
+    toast(r.message || "Bulk deploy finished", r.ok ? "success" : "error");
+    const note = document.getElementById("guestExperienceNote");
+    if (note && lines.length) note.innerHTML = lines.map(x => `• ${esc(x)}`).join("<br>");
+    hubLogOperationResponse("Push all online", r, { category: "setup" });
+    await loadRegistry();
+    await loadSetupStatus();
+  } catch (e) { toast(e.message, "error"); }
+}
+
 async function provisionNewTv() {
   if (!selectedDevice || !isDeviceOnline()) { toast("Connect a TV first", "error"); return; }
   await saveGuestWelcome();
+  const skipPair = confirm(
+    "Full provision (CDO / Google TV lockdown)?\n\n"
+    + "OK = continue full provision (ADB helper, streaming, apps-only).\n"
+    + "Cancel = use Push welcome app instead (recommended for Shield / simple deploy)."
+  );
+  if (!skipPair) {
+    await deployLauncherToDevice(selectedDevice.id, { label: "Push welcome app" });
+    return;
+  }
   const msg = [
-    "Provision this TV for Cielo guests?",
+    "Full provision for this TV?",
     "",
     "This will:",
-    "• Install ADB reboot helper (wireless debugging survives reboot)",
-    "• Persist developer options across reboots",
-    "• Mute wireless debugging banners where possible",
+    "• Install ADB reboot helper (optional — needs fresh pairing code)",
     "• Install guest welcome launcher + streaming apps",
-    "• Enable Google TV apps-only mode",
+    "• Enable Google TV apps-only mode (Google TV only)",
     "",
-    "On the TV now: open Wireless debugging → Pair device with pairing code.",
+    "If already paired, choose Skip on the next dialog.",
   ].join("\n");
   if (!confirm(msg)) return;
-  const creds = await promptPairingCredentials();
-  if (!creds) return;
+  let creds = { setup_adb_helper: false };
+  if (confirm("Install ADB reboot helper now?\n\nCancel = skip (TV already paired / Shield network debugging).")) {
+    const pair = await promptPairingCredentials();
+    if (!pair) return;
+    creds = { ...pair, setup_adb_helper: true };
+  }
   toast("Provisioning TV — this may take a few minutes...");
   hubLog({
     level: "info",
@@ -3429,6 +3529,31 @@ document.getElementById("btnWakeResetTv")?.addEventListener("click", wakeAndRese
 document.getElementById("btnWakeBedroomTvs")?.addEventListener("click", wakeBedroomTvs);
 document.getElementById("btnSleepTv")?.addEventListener("click", sleepSelectedTv);
 document.getElementById("btnRebootTv")?.addEventListener("click", rebootSelectedTv);
+document.getElementById("btnPushWelcomeApp")?.addEventListener("click", () => {
+  if (!selectedDevice) { toast("Select a TV first", "error"); return; }
+  deployLauncherToDevice(selectedDevice.id, { label: "Push welcome app" });
+});
+document.getElementById("btnUpdateLauncherApk")?.addEventListener("click", () => {
+  if (!selectedDevice) { toast("Select a TV first", "error"); return; }
+  deployLauncherToDevice(selectedDevice.id, {
+    label: "Update launcher APK",
+    launchWelcome: false,
+    forceReinstall: true,
+  });
+});
+document.getElementById("btnPushWelcomeAll")?.addEventListener("click", deployLauncherToAllOnline);
+document.getElementById("btnSetupPushWelcome")?.addEventListener("click", () => {
+  if (!setupSelectedDeviceId) { toast("Select a connected TV in the list", "error"); return; }
+  deployLauncherToDevice(setupSelectedDeviceId, { label: "Push welcome app" });
+});
+document.getElementById("btnSetupUpdateApk")?.addEventListener("click", () => {
+  if (!setupSelectedDeviceId) { toast("Select a connected TV in the list", "error"); return; }
+  deployLauncherToDevice(setupSelectedDeviceId, {
+    label: "Update launcher APK",
+    launchWelcome: false,
+    forceReinstall: true,
+  });
+});
 document.getElementById("btnProvisionTv")?.addEventListener("click", provisionNewTv);
 document.getElementById("btnEnsureGuestReady")?.addEventListener("click", ensureGuestReady);
 document.getElementById("btnAppsOnlyMode")?.addEventListener("click", enableAppsOnlyMode);

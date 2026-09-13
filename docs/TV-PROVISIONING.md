@@ -103,12 +103,12 @@ curl -s -X POST http://172.16.1.36:18080/api/registry/claim-by-code \
 2. **Pair device** — pairing port + 6-digit code (if not paired at register).
 3. **TV Management** → select TV → **Connect** (status must be `device`, not `unauthorized`).
 
-### 3. Provision
+### 3. Push welcome app (after Connect shows **device**)
 
-1. **Provision New TV** or **Setup this TV** (TV Management / Guest Experience).
-2. Hub pushes APK, sets guest launcher as Home, applies welcome config.
+1. **TV Management** → select the TV → **Push welcome app**
+2. After hub APK rebuild → **Update launcher APK** (or **Push to all online**)
 
-You can still use **Path 1 claim** after ADB install if you prefer HTTP binding to a room slot.
+Optional full CDO/Google TV lockdown: **Provision New TV (full)**.
 
 ### API (optional)
 
@@ -118,7 +118,10 @@ curl -s -X POST http://172.16.1.36:18080/api/registry \
   -d '{"name":"NVIDIA Shield","host":"172.16.1.220","port":5555}'
 
 curl -s -X POST http://172.16.1.36:18080/api/registry/1/connect
-curl -s -X POST http://172.16.1.36:18080/api/registry/1/provision
+
+curl -s -X POST http://172.16.1.36:18080/api/aatomhome/registry/1/deploy-launcher \
+  -H 'Content-Type: application/json' \
+  -d '{"set_home":true,"launch_welcome":true,"force_reinstall":true}'
 ```
 
 ---
@@ -133,6 +136,8 @@ curl -s -X POST http://172.16.1.36:18080/api/registry/1/provision
 | Download APK | `http://172.16.1.36:18080/api/aatomhome/guest-launcher/apk` |
 | Hub QR | `http://172.16.1.36:18080/api/aatomhome/guest-launcher/hub-qr.png` |
 | Create app slot | `POST /api/aatomhome/registry/app-slot` |
+| Push welcome app (ADB) | `POST /api/aatomhome/registry/{id}/deploy-launcher` |
+| Push to all online TVs | `POST /api/aatomhome/registry/deploy-launcher` |
 
 ---
 

@@ -264,6 +264,8 @@ async def get_setup_status() -> dict[str, Any]:
             "download_url": f"{hub_url}/api/aatomhome/guest-launcher/apk",
             "qr_url": f"{hub_url}/api/aatomhome/guest-launcher/hub-qr.png",
             "provisioning_doc": "https://github.com/redawg/aatomhome-airbnb-welcome/blob/main/docs/TV-PROVISIONING.md",
+            "deploy_launcher_api": f"{hub_url}/api/aatomhome/registry/{{device_id}}/deploy-launcher",
+            "deploy_launcher_bulk_api": f"{hub_url}/api/aatomhome/registry/deploy-launcher",
         },
     }
 

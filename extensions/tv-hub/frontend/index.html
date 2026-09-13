@@ -65,11 +65,19 @@
             </div>
           </div>
           <div class="tv-actions-group">
-            <span class="tv-actions-label">Setup</span>
+            <span class="tv-actions-label">Welcome app (ADB)</span>
             <div class="toolbar tv-actions-toolbar">
-              <button type="button" class="btn btn-primary btn-sm" id="btnProvisionTv" title="First-time TV: ADB helper, launcher, streaming apps, welcome">Provision New TV</button>
-              <button type="button" class="btn btn-primary btn-sm" id="btnGuestSetup" title="Update launcher on selected TV">Setup this TV</button>
-              <button type="button" class="btn btn-primary btn-sm" id="btnGuestDeployAll" title="Save welcome and update launcher on every online CDO TV">Update all CDO TVs</button>
+              <button type="button" class="btn btn-primary btn-sm" id="btnPushWelcomeApp" title="Install launcher APK, set Home, open welcome — for paired TVs">Push welcome app</button>
+              <button type="button" class="btn btn-primary btn-sm" id="btnUpdateLauncherApk" title="Reinstall hub APK build on TV (after hub rebuild)">Update launcher APK</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnPushWelcomeAll" title="Push welcome app to every ADB-online TV">Push to all online</button>
+            </div>
+          </div>
+          <div class="tv-actions-group">
+            <span class="tv-actions-label">Full setup (CDO / Google TV)</span>
+            <div class="toolbar tv-actions-toolbar">
+              <button type="button" class="btn btn-secondary btn-sm" id="btnProvisionTv" title="Full first-time: ADB helper, streaming apps, apps-only mode">Provision New TV (full)</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnGuestSetup" title="CDO guest account + streaming sync">Setup this TV (CDO)</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnGuestDeployAll" title="CDO roll-out to all online TVs">Update all CDO TVs</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btnEnsureGuestReady" title="Persist dev options, sync launcher, enable apps-only mode">Ensure TV ready</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btnAppsOnlyMode" title="Enable Google TV Apps only mode via ADB">Apps only mode</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btnAdbAutoEnablePanel" title="Keep wireless debugging after reboot">ADB Reboot Helper</button>
@@ -421,6 +429,8 @@
                 <div class="toolbar setup-form-actions">
                   <button type="button" class="btn btn-secondary btn-sm" id="btnSetupAddTv">Register for ADB</button>
                   <button type="button" class="btn btn-secondary btn-sm" id="btnSetupPairTv">Pair device</button>
+                  <button type="button" class="btn btn-primary btn-sm" id="btnSetupPushWelcome" disabled title="Select a connected TV below">Push welcome app</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnSetupUpdateApk" disabled title="Select a connected TV below">Update APK</button>
                   <button type="button" class="btn btn-secondary btn-sm" id="btnSetupGoTvs">Open TV Management</button>
                 </div>
               </article>

@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 import database as db
 from . import store
+from .launcher_deploy import deploy_launcher, deploy_launcher_bulk
 from .tv_agent_ws import dispatch_clear_streaming, hub_public_url, poll_agent_command, submit_agent_result
 
 logger = logging.getLogger("aatomhome.registry")
@@ -38,6 +39,24 @@ class SelfRegisterBody(BaseModel):
     property_id: int = 1
 
 
+class DeployLauncherBody(BaseModel):
+    """Path 2 — push bundled welcome APK over ADB to a connected TV."""
+    set_home: bool = True
+    launch_welcome: bool = True
+    force_reinstall: bool = True
+    start_agent: bool = True
+    auto_claim: bool = True
+
+
+class DeployLauncherBulkBody(BaseModel):
+    set_home: bool = True
+    launch_welcome: bool = True
+    force_reinstall: bool = True
+    start_agent: bool = True
+    auto_claim: bool = True
+    online_only: bool = True
+
+
 class AppSlotBody(BaseModel):
     """Path 1 — staff creates a room slot before the TV installs the launcher app."""
     name: str = Field(..., min_length=1, max_length=120)
@@ -63,6 +82,60 @@ async def aatomhome_health() -> dict[str, Any]:
         "extensions": "aatomhome",
         "hub_public_url": hub_public_url(),
     }
+
+
+@router.post("/api/aatomhome/registry/{device_id}/deploy-launcher")
+async def registry_deploy_launcher(device_id: int, body: DeployLauncherBody | None = None) -> dict[str, Any]:
+    """Install or update the guest launcher APK on a paired, ADB-connected TV."""
+    device = await db.get_device(device_id)
+    if not device:
+        raise HTTPException(404, "Device not found")
+    req = body or DeployLauncherBody()
+    try:
+        result = await deploy_launcher(
+            device,
+            set_home=req.set_home,
+            launch_welcome=req.launch_welcome,
+            force_reinstall=req.force_reinstall,
+            start_agent=req.start_agent,
+            auto_claim=req.auto_claim,
+        )
+    except ValueError as exc:
+        raise HTTPException(503, str(exc))
+    if req.launch_welcome and result.get("ok"):
+        import device_detection
+
+        try:
+            await device_detection.refresh_device_profile(device, result["serial"])
+        except Exception:
+            logger.exception("Device profile refresh after deploy for %s", device.get("name"))
+    updated = await db.get_device(device_id)
+    if updated and result.get("serial"):
+        host, port_str = result["serial"].rsplit(":", 1)
+        if updated.get("host") != host or str(updated.get("port")) != port_str:
+            await db.update_device(device_id, host=host, port=int(port_str))
+            updated = await db.get_device(device_id)
+    result["device"] = updated
+    return result
+
+
+@router.post("/api/aatomhome/registry/deploy-launcher")
+async def registry_deploy_launcher_bulk(body: DeployLauncherBulkBody | None = None) -> dict[str, Any]:
+    """Push welcome launcher APK to every registered TV (online only by default)."""
+    req = body or DeployLauncherBulkBody()
+    devices = await db.list_devices()
+    if req.online_only:
+        devices = [d for d in devices if d.get("connection_state") == "device"]
+    if not devices:
+        raise HTTPException(404, "No ADB-connected TVs — connect a TV first")
+    return await deploy_launcher_bulk(
+        devices,
+        set_home=req.set_home,
+        launch_welcome=req.launch_welcome,
+        force_reinstall=req.force_reinstall,
+        start_agent=req.start_agent,
+        auto_claim=req.auto_claim,
+    )
 
 
 @router.post("/api/aatomhome/registry/app-slot")
