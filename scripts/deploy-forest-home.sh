@@ -3,6 +3,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/deploy-env.sh
+source "$ROOT/scripts/lib/deploy-env.sh"
 ENV_FILE="${ENV_FILE:-$ROOT/deploy/profiles/forest-lan/.env}"
 [[ -f "$ENV_FILE" ]] || ENV_FILE="$ROOT/deploy/forest-home/.env"
 
@@ -13,8 +15,10 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 
+deploy_env_sync_urls_from_file "$ENV_FILE" || true
 : "${HUB_PUBLIC_URL:?Set HUB_PUBLIC_URL}"
 : "${HUB_GUEST_URL:?Set HUB_GUEST_URL}"
+: "${HUB_LISTEN_PORT:?Set HUB_LISTEN_PORT}"
 : "${HA_HOST:?Set HA_HOST for remote deploy}"
 
 HA_USER="${HA_USER:-root}"
@@ -68,13 +72,7 @@ fi
 
 echo "==> Installing Podman quadlets (${PODMAN_MODE})"
 ENV_TMP="$(mktemp)"
-cat > "$ENV_TMP" <<EOF
-HUB_PUBLIC_URL=${HUB_PUBLIC_URL}
-TEMPEST_API_TOKEN=${TEMPEST_API_TOKEN:-}
-TEMPEST_STATION_ID=${TEMPEST_STATION_ID:-}
-HA_URL=${HA_URL:-http://127.0.0.1:8123}
-HA_LONG_LIVED_TOKEN=${HA_LONG_LIVED_TOKEN:-}
-EOF
+deploy_env_write_runtime "$ENV_TMP"
 
 if [[ "$PODMAN_MODE" == "rootful" ]]; then
   QUADLET_TARGET="/etc/containers/systemd"

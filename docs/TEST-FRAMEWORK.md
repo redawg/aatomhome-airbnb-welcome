@@ -5,7 +5,7 @@ Test **two connectivity paths** from the same Forest house TV without rebuilding
 | Profile ID | Hub URL | Network path | Best for |
 |------------|---------|--------------|----------|
 | `forest-lan` | `http://172.16.255.250:8080` | TV → Forest HA LAN (often **cross-VLAN**) | Production-like: hub co-located with HA |
-| `infra3` | `http://172.16.1.36:8080` | TV → fleet infra3 (**same VLAN** as many lab TVs) | ADB + agent testing when TV routes to `172.16.1.x` |
+| `infra3` | `http://172.16.1.36:18080` | TV → fleet infra3 (**same VLAN** as many lab TVs) | ADB + agent testing when TV routes to `172.16.1.x` (`:8080` on infra3 is EcoFlow) |
 
 **Home Assistant** (Forest `172.16.255.250:8123`) can load **two integration instances** — one per hub URL — so automations can target TVs on either backend.
 
@@ -23,8 +23,8 @@ From a build host with fleet access:
 # 1) Build image once
 ./scripts/build.sh
 
-# 2) infra3 (fleet / same-VLAN test hub)
-cp deploy/profiles/infra3-standalone/env.example deploy/profiles/infra3-standalone/.env
+# 2) infra3 (fleet / same-VLAN test hub — default port 18080)
+./scripts/configure-deploy.sh --profile infra3-standalone --force
 # On infra3 or via @redhat-agent AAP:
 ./scripts/deploy-profile.sh infra3-standalone
 
@@ -74,7 +74,7 @@ curl -X POST "http://HUB/api/registry/pending/PENDING_ID/approve"
 
 1. **Settings → Integrations → Add → Aatomhome Airbnb Welcome**
 2. First entry: hub URL `http://172.16.255.250:8080` — name e.g. `Forest Hub`
-3. Second entry: hub URL `http://172.16.1.36:8080` — name e.g. `Infra3 Test Hub`
+3. Second entry: hub URL `http://172.16.1.36:18080` — name e.g. `Infra3 Test Hub`
 
 Each instance exposes its own TV online sensors and services. Room names in **Configure** sync to that hub’s `room-config`.
 
@@ -82,9 +82,9 @@ Each instance exposes its own TV online sensors and services. Room names in **Co
 
 | Step | Forest hub | Infra3 hub |
 |------|------------|------------|
-| Health | `curl http://172.16.255.250:8080/api/aatomhome/health` | `curl http://172.16.1.36:8080/api/aatomhome/health` |
+| Health | `curl http://172.16.255.250:8080/api/aatomhome/health` | `curl http://172.16.1.36:18080/api/aatomhome/health` |
 | TV claim | App → forest-lan profile + code | App → infra3 profile + code |
-| Welcome HTTP | TV loads `…250:8080/guest/` | TV loads `…36:8080/guest/` |
+| Welcome HTTP | TV loads `…250:8080/guest/` | TV loads `…36:18080/guest/` |
 | ADB connect | Hub → TV if routed | Hub → TV on same VLAN |
 | Guest checkout | HA → forest integration `guest_check_out` | HA → infra3 integration `guest_check_out` |
 | Agent path | `clear_streaming` via poll/WS | same |
@@ -98,5 +98,5 @@ adb shell am start -n com.cielodeloro.guestwelcome/.MainActivity \
 
 adb shell am start -n com.cielodeloro.guestwelcome/.MainActivity \
   --es hub_profile infra3 \
-  --es hub_url http://172.16.1.36:8080/guest/
+  --es hub_url http://172.16.1.36:18080/guest/
 ```

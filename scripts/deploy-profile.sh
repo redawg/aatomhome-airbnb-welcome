@@ -11,7 +11,10 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 
 PROFILE_DIR="$ROOT/deploy/profiles/$PROFILE"
 ENV_FILE="$PROFILE_DIR/.env"
-[[ -f "$ENV_FILE" ]] || die "Missing $ENV_FILE — cp $PROFILE_DIR/env.example $ENV_FILE"
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "==> No $ENV_FILE — running configure-deploy.sh"
+  "$ROOT/scripts/configure-deploy.sh" --profile "$PROFILE" --force
+fi
 
 export ENV_FILE
 export DEPLOY_PROFILE="$PROFILE"

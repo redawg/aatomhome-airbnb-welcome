@@ -118,7 +118,7 @@ class HubConfig(context: Context) {
             HubProfile(
                 PROFILE_INFRA3,
                 "Infra3 hub (fleet / same-VLAN test)",
-                "http://172.16.1.36:8080",
+                "http://172.16.1.36:18080",
             ),
         )
 
