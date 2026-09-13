@@ -23,20 +23,40 @@ if [[ -d "$EXT_ROOT/frontend" ]]; then
   echo "==> Applied frontend extensions"
 fi
 
-if ! grep -q "$MARKER" "$MAIN" 2>/dev/null; then
-  cat >> "$MAIN" <<'PY'
+python3 - "$MAIN" "$MARKER" <<'PY'
+import re
+import sys
+from pathlib import Path
 
+main_path = Path(sys.argv[1])
+marker = sys.argv[2]
+bootstrap = """
 # aatomhome-extensions-installed
 try:
     from aatomhome.bootstrap import install_aatomhome_extensions
     install_aatomhome_extensions(app)
 except ImportError:
     pass
+"""
+text = main_path.read_text()
+text = re.sub(
+    r"\n# aatomhome-extensions-installed\n.*?except ImportError:\n    pass\n?",
+    "\n",
+    text,
+    flags=re.DOTALL,
+)
+if marker not in text:
+    anchor = "if GUEST_WELCOME_DIR.exists():"
+    if anchor not in text:
+        anchor = 'if FRONTEND_DIR.exists():'
+    if anchor not in text:
+        raise SystemExit("ERROR: could not find mount anchor in main.py")
+    text = text.replace(anchor, bootstrap + "\n" + anchor, 1)
+    main_path.write_text(text)
+    print("==> Patched main.py — extensions before static mounts")
+else:
+    print("==> main.py already has extension bootstrap")
 PY
-  echo "==> Patched main.py with extension bootstrap"
-else
-  echo "==> main.py already has extension bootstrap"
-fi
 
 cp "$EXT_ROOT/entrypoint.sh" "$DEST/entrypoint.sh"
 chmod +x "$DEST/entrypoint.sh"
