@@ -12,6 +12,8 @@ Pre-built APK that sets **Cielo / Aatomhome Guest Welcome** as the TV home app a
 **Package:** `com.cielodeloro.guestwelcome`  
 **Default hub URL baked in:** `http://172.18.1.137:8080/guest/` — patch at deploy time with [`../scripts/patch-apk-hub-url.sh`](../scripts/patch-apk-hub-url.sh) and `HUB_PUBLIC_URL`.
 
+**Multi-property / claim flow (source):** `HubConfig.kt` persists `hub_url` per TV; first boot shows room-code claim (`POST /api/registry/claim-by-code`) or self-register (`POST /api/registry/self-register`). `TvAgentService` polls the hub for guest ops when inbound ADB is unavailable.
+
 ## License
 
 - Launcher **source** (`src/`, `patches/`) — **MIT** (see [../LICENSE](../LICENSE))

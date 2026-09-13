@@ -32,3 +32,6 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/welcome_accessibility"/>
         </service>
+        <service
+            android:name="com.cielodeloro.guestwelcome.TvAgentService"
+            android:exported="false"/>

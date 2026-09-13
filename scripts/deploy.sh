@@ -39,8 +39,10 @@ IMAGE="${ADB_TV_HUB_IMAGE:-localhost/aatomhome-tv-hub:latest}"
 echo "==> Building $IMAGE"
 podman build -t "$IMAGE" -f "$ROOT/tv-hub/Containerfile" "$ROOT/tv-hub"
 
-QUADLET_SRC="$ROOT/deploy/forest-ha/adb-tv-hub.container"
-QUADLET_ENV="$ROOT/deploy/forest-ha/adb-tv-hub.env"
+DEPLOY_PROFILE="${DEPLOY_PROFILE:-forest-ha}"
+QUADLET_DIR="$ROOT/deploy/${DEPLOY_PROFILE}"
+QUADLET_SRC="$QUADLET_DIR/adb-tv-hub.container"
+QUADLET_ENV="$QUADLET_DIR/adb-tv-hub.env"
 if [[ -f "$QUADLET_SRC" ]]; then
   PODMAN_MODE="${PODMAN_MODE:-rootless}"
   if [[ "$PODMAN_MODE" == "rootful" ]]; then
@@ -48,12 +50,20 @@ if [[ -f "$QUADLET_SRC" ]]; then
     SYSTEMCTL="sudo systemctl"
     sudo mkdir -p "$TARGET"
     sudo cp "$QUADLET_SRC" "$TARGET/"
-    [[ -f "$QUADLET_ENV" ]] && sudo cp "$QUADLET_ENV" "$TARGET/adb-tv-hub.env"
+    [[ -f "$QUADLET_DIR/adb-tv-hub-data.volume" ]] && sudo cp "$QUADLET_DIR/adb-tv-hub-data.volume" "$TARGET/"
+    sudo tee "$TARGET/adb-tv-hub.env" >/dev/null <<EOF
+HUB_PUBLIC_URL=${HUB_PUBLIC_URL}
+TEMPEST_API_TOKEN=${TEMPEST_API_TOKEN:-}
+TEMPEST_STATION_ID=${TEMPEST_STATION_ID:-}
+HA_URL=${HA_URL:-}
+HA_LONG_LIVED_TOKEN=${HA_LONG_LIVED_TOKEN:-}
+EOF
   else
     TARGET="${HOME}/.config/containers/systemd"
     mkdir -p "$TARGET"
     cp "$QUADLET_SRC" "$TARGET/"
     # Generate env from deploy/.env
+    [[ -f "$QUADLET_DIR/adb-tv-hub-data.volume" ]] && cp "$QUADLET_DIR/adb-tv-hub-data.volume" "$TARGET/"
     cat > "$TARGET/adb-tv-hub.env" <<EOF
 HUB_PUBLIC_URL=${HUB_PUBLIC_URL}
 TEMPEST_API_TOKEN=${TEMPEST_API_TOKEN:-}
@@ -73,14 +83,12 @@ EOF
   echo "==> tv-hub service started"
 fi
 
-if [[ -n "${HA_CONFIG_DIR:-}" && -d "$HA_CONFIG_DIR" ]]; then
-  DEST="$HA_CONFIG_DIR/custom_components/aatomhome_airbnb_welcome"
-  mkdir -p "$HA_CONFIG_DIR/custom_components"
-  rsync -a --delete "$ROOT/homeassistant/custom_components/aatomhome_airbnb_welcome/" "$DEST/"
-  echo "==> HA integration copied to $DEST"
-  echo "    Restart Home Assistant and add integration in UI"
+if [[ -n "${HA_HOST:-}" ]]; then
+  ENV_FILE="$ENV_FILE" "$ROOT/scripts/install-ha-integration.sh"
+elif [[ -n "${HA_CONFIG_DIR:-}" && -d "$HA_CONFIG_DIR" ]]; then
+  ENV_FILE="$ENV_FILE" "$ROOT/scripts/install-ha-integration.sh"
 else
-  echo "==> Skip HA integration (HA_CONFIG_DIR not set or missing)"
+  echo "==> Skip HA integration (set HA_HOST or HA_CONFIG_DIR)"
 fi
 
 echo ""

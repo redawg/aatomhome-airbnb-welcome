@@ -1,9 +1,9 @@
-# Placeholder — forest-ha deploy bundle
+# aatomhome pilot deploy bundle
 
-Quadlet: [`adb-tv-hub.container`](adb-tv-hub.container)
+Quadlets for **aatomhome** (`172.16.1.30`) — VPN/route to property TV LAN.
 
-Used by [`scripts/deploy.sh`](../scripts/deploy.sh) when `PODMAN_MODE=rootless` (default) or `rootful`.
+For **Forest Home** HA (`172.16.255.250`), use [`deploy/forest-home/`](../forest-home/) and `./scripts/deploy-forest-home.sh`.
 
-Target host example: **aatomhome** (`172.16.1.30`) with VPN/route to property TV LAN.
+Local install: `cp deploy/forest-ha/env.example deploy/.env` then `./scripts/deploy.sh`
 
 See [`docs/DEPLOY.md`](../docs/DEPLOY.md).

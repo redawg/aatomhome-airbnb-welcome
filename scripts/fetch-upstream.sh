@@ -23,3 +23,5 @@ else
 fi
 
 echo "==> tv-hub at $(git -C "$DEST" rev-parse --short HEAD) ($TAG)"
+
+"$ROOT/scripts/apply-tv-hub-extensions.sh"

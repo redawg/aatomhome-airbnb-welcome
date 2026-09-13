@@ -59,7 +59,18 @@ Full plan: see `.cursor/plans/ha_room_control_center_e561c219.plan.md` in the Cu
 
 ## Status
 
-**Deploy-ready scaffold** — CDO production is frozen; active development happens here.
+| Component | Status |
+|-----------|--------|
+| **HA integration** | Phase 1 + Phase 2 room_config sync (`v0.2.0`) |
+| **tv-hub extensions** | Claim/self-register, room-config API, TV agent WS + HTTP poll |
+| **Guest launcher** | Hub URL prefs, claim screen, outbound TV agent (source; rebuild APK) |
+| **Deploy profiles** | `forest-lan`, `infra3-standalone`, `cdo-vpn` — see [`deploy/profiles/README.md`](deploy/profiles/README.md) |
+
+**Forest Home deploy** — `./scripts/deploy-profile.sh forest-lan` or `./scripts/deploy-forest-home.sh`.
+
+**Networking** — [`docs/NETWORKING.md`](docs/NETWORKING.md) · **HA Green** — [`docs/GREEN-HA.md`](docs/GREEN-HA.md)
+
+CDO production is frozen; active development happens here.
 
 ### Deploy with an AI agent or from CLI
 

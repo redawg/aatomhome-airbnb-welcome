@@ -6,7 +6,36 @@ import android.content.Intent
 import android.webkit.JavascriptInterface
 import android.widget.Toast
 
-class GuestLauncherBridge(private val context: Context) {
+class GuestLauncherBridge(
+    private val context: Context,
+    private val hubConfig: HubConfig? = null,
+) {
+
+    @JavascriptInterface
+    fun getHubUrl(): String {
+        return hubConfig?.hubBaseUrl ?: HubConfig.DEFAULT_HUB_BASE
+    }
+
+    @JavascriptInterface
+    fun getActiveProfileId(): String {
+        return hubConfig?.activeProfileId ?: HubConfig.PROFILE_FOREST_LAN
+    }
+
+    @JavascriptInterface
+    fun listHubProfiles(): String {
+        val config = hubConfig ?: return "[]"
+        val arr = org.json.JSONArray()
+        for (profile in config.profiles) {
+            val obj = org.json.JSONObject()
+            obj.put("id", profile.id)
+            obj.put("label", profile.label)
+            obj.put("hub_url", config.hubBaseUrl(profile.id))
+            obj.put("claimed", config.isClaimed(profile.id))
+            obj.put("device_id", config.deviceId(profile.id))
+            arr.put(obj)
+        }
+        return arr.toString()
+    }
 
     @JavascriptInterface
     fun isAppInstalled(packageName: String): Boolean {

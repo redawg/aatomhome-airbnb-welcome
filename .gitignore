@@ -2,12 +2,17 @@ __pycache__/
 *.pyc
 .env
 deploy/.env
+deploy/forest-home/.env
+deploy/forest-ha/.env
+deploy/profiles/*/.env
 *.env
 !deploy/env.template
 !deploy/forest-ha/*.env.example
 data/
 uploads/
 tv-hub/
+!extensions/tv-hub/
+!extensions/tv-hub/**
 
 # Keep prebuilt APK in repo
 !guest-launcher/releases/*.apk

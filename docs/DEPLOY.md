@@ -4,6 +4,26 @@ End-to-end deployment guide for humans and AI coding agents.
 
 ## Quick start (AI agent)
 
+### Deploy profiles (pick one)
+
+| Profile | Command |
+|---------|---------|
+| **forest-lan** | `cp deploy/profiles/forest-lan/env.example deploy/profiles/forest-lan/.env` → `./scripts/deploy-profile.sh forest-lan` |
+| **infra3-standalone** | `cp deploy/profiles/infra3-standalone/env.example …` → `./scripts/deploy-profile.sh infra3-standalone` |
+| **cdo-vpn** | `cp deploy/profiles/cdo-vpn/env.example …` → `./scripts/deploy-profile.sh cdo-vpn` |
+
+Verify every profile:
+
+```bash
+ENV_FILE=deploy/profiles/<profile>/.env ./scripts/verify-hub.sh
+```
+
+See [`deploy/profiles/README.md`](../deploy/profiles/README.md), [`docs/NETWORKING.md`](NETWORKING.md), [`docs/GREEN-HA.md`](GREEN-HA.md).
+
+Legacy Forest Home path: [`deploy/forest-home/README.md`](../deploy/forest-home/README.md).
+
+### aatomhome pilot / other host
+
 1. Read this file and [`QUESTIONNAIRE.md`](QUESTIONNAIRE.md).
 2. Ask the user every **Required** question; write answers to `deploy/.env`.
 3. Follow [`.cursor/skills/aatomhome-deploy/SKILL.md`](../.cursor/skills/aatomhome-deploy/SKILL.md).
@@ -70,9 +90,9 @@ cp -r homeassistant/custom_components/aatomhome_airbnb_welcome \
   "$HA_CONFIG_DIR/custom_components/"
 ```
 
-Restart HA → **Settings → Devices & services → Add integration** → *Aatomhome Airbnb Welcome* (when config flow is implemented).
+Restart HA → **Settings → Devices & services → Add integration** → *Aatomhome Airbnb Welcome*.
 
-Until Phase 1 is complete, use REST commands documented in [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md).
+See [`homeassistant/README.md`](../homeassistant/README.md) for entities, services, and example automations.
 
 ## Manual TV steps (cannot be fully automated)
 

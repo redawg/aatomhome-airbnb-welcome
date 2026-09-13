@@ -8,7 +8,18 @@ description: >-
 
 # Aatomhome Airbnb Welcome — deployment skill
 
-Use this skill when the user asks to deploy, install, or configure this project on a new host (forest-ha, aatomhome, or a property LAN).
+Use this skill when the user asks to deploy, install, or configure this project on a new host (Forest Home, forest-ha/aatomhome, or a property LAN).
+
+## Forest Home (172.16.255.250) — default for Forest HA
+
+```bash
+cp deploy/forest-home/env.example deploy/forest-home/.env
+# HA_LONG_LIVED_TOKEN from vault ha_token
+./scripts/deploy-forest-home.sh
+./scripts/verify-hub.sh
+```
+
+Docs: [`deploy/forest-home/README.md`](../../deploy/forest-home/README.md)
 
 ## Before running anything
 

@@ -1,0 +1,81 @@
+connect_all_tvs:
+  name: Connect all TVs
+  description: Discover and connect every TV registered in the guest welcome hub.
+
+connect_tv:
+  name: Connect TV
+  description: Connect one registered guest TV via ADB.
+  fields:
+    device_id:
+      name: Device ID
+      description: Hub registry device ID. Omit when targeting a TV online entity.
+      example: 3
+      selector:
+        number:
+          min: 1
+          mode: box
+  target:
+    entity:
+      - domain: binary_sensor
+        device_class: connectivity
+
+guest_check_in:
+  name: Guest check-in
+  description: Record a guest stay and update the welcome screen.
+  fields:
+    guest_name:
+      name: Guest name
+      required: true
+      example: Jane Smith
+      selector:
+        text:
+    check_in:
+      name: Check-in date
+      description: ISO date (YYYY-MM-DD). Defaults to today.
+      example: "2026-09-13"
+      selector:
+        text:
+    check_out:
+      name: Check-out date
+      description: ISO date (YYYY-MM-DD). Defaults to six nights after check-in.
+      example: "2026-09-19"
+      selector:
+        text:
+    checkout_time:
+      name: Checkout time
+      description: Display time on the welcome screen (e.g. 11:00 AM).
+      example: "11:00 AM"
+      selector:
+        text:
+    apply_to_welcome:
+      name: Apply to welcome screen
+      default: true
+      selector:
+        boolean:
+
+guest_check_out:
+  name: Guest check-out
+  description: Clear the guest name, reset the welcome screen, and optionally sign out streaming apps.
+  fields:
+    clear_streaming:
+      name: Clear streaming logins
+      default: true
+      selector:
+        boolean:
+
+clear_streaming_logins:
+  name: Clear streaming logins
+  description: Sign out streaming apps on one TV or all connected TVs.
+  fields:
+    device_id:
+      name: Device ID
+      description: Hub registry device ID. Omit to clear all TVs.
+      example: 3
+      selector:
+        number:
+          min: 1
+          mode: box
+  target:
+    entity:
+      - domain: binary_sensor
+        device_class: connectivity

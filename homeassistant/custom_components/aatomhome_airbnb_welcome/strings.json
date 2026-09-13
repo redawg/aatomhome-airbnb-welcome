@@ -1,0 +1,35 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Guest Welcome Hub",
+        "description": "Connect Home Assistant to your adb-tv-hub instance. {health_hint}",
+        "data": {
+          "hub_url": "Hub URL",
+          "property_name": "Property name",
+          "property_id": "Property ID",
+          "poll_interval": "Poll interval (seconds)",
+          "hub_api_token": "Hub API token (optional)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the hub or /api/health failed.",
+      "invalid_url": "Enter a full URL including http:// or https://."
+    },
+    "abort": {
+      "already_configured": "This hub is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Guest Welcome options",
+        "description": "Set poll interval and per-TV room names. {room_hint}",
+        "data": {
+          "poll_interval": "Poll interval (seconds)"
+        }
+      }
+    }
+  }
+}
