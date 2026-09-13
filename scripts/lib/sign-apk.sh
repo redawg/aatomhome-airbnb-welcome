@@ -25,8 +25,11 @@ sign_apk() {
   java -jar "$signer" --apks "$apk" --allowResign --overwrite
 
   # Verify v2/v3 present (fails if only v1 JAR signing).
-  if ! java -jar "$signer" --verify "$apk" 2>&1 | grep -q 'signature verified \[v2'; then
+  local verify_out
+  verify_out="$(java -jar "$signer" --verify "$apk" 2>&1 || true)"
+  if ! grep -qE 'signature verified.*\[v2' <<<"$verify_out"; then
     echo "sign_apk: verify failed — v2/v3 signature missing on $apk" >&2
+    echo "$verify_out" >&2
     return 1
   fi
 }

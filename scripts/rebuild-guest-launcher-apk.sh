@@ -12,7 +12,13 @@ fi
 BASE_APK="${GUEST_LAUNCHER_BASE_APK:-$ROOT/tv-hub/guest-launcher/cielodeloro-guestwelcome.apk}"
 OUTPUT_APK="${GUEST_LAUNCHER_APK:-$ROOT/guest-launcher/releases/aatomhome-guest-welcome.apk}"
 PATCHES="${GUEST_LAUNCHER_PATCHES:-$ROOT/guest-launcher/patches}"
-HUB_URL="${HUB_GUEST_URL:-${HUB_PUBLIC_URL%/}/guest/}"
+if [[ -n "${HUB_GUEST_URL:-}" ]]; then
+  HUB_URL="$HUB_GUEST_URL"
+elif [[ -n "${HUB_PUBLIC_URL:-}" ]]; then
+  HUB_URL="${HUB_PUBLIC_URL%/}/guest/"
+else
+  HUB_URL="http://192.168.1.100:8080/guest/"
+fi
 WORKDIR="$(mktemp -d)"
 APKTOOL_JAR="${APKTOOL_JAR:-$WORKDIR/apktool.jar}"
 
@@ -81,10 +87,22 @@ PY
 mkdir -p "$WORKDIR/guest-apk/res/xml" "$WORKDIR/guest-apk/res/values"
 cp "$PATCHES/res/xml/welcome_accessibility.xml" "$WORKDIR/guest-apk/res/xml/welcome_accessibility.xml"
 STRINGS="$WORKDIR/guest-apk/res/values/strings.xml"
-if ! grep -q 'welcome_accessibility_desc' "$STRINGS"; then
-  sed -i 's|</resources>|    <string name="welcome_accessibility_desc">Returns to the guest welcome screen after streaming apps are closed.</string>\n</resources>|' "$STRINGS"
-fi
 cp "$PATCHES/smali/"*.smali "$WORKDIR/guest-apk/smali_classes3/com/cielodeloro/guestwelcome/"
+
+apply_generic_apk_branding() {
+  local smali_dir="$1"
+  [[ -f "$STRINGS" ]] && sed -i \
+    -e 's|<string name="app_name">[^<]*</string>|<string name="app_name">Guest Welcome</string>|' \
+    -e 's|<string name="welcome_accessibility_desc">[^<]*</string>|<string name="welcome_accessibility_desc">Returns to the guest welcome screen after streaming apps are closed.</string>|' \
+    "$STRINGS"
+  if [[ -d "$smali_dir" ]]; then
+    find "$smali_dir" -name '*.smali' -print0 | xargs -0 sed -i \
+      -e 's/Cielo del Oro Guest/Guest Welcome/g' \
+      -e 's/Cielo del Oro/Guest Welcome/g' \
+      -e 's/Cielo guest welcome/guest welcome/g' \
+      -e 's/Cielo Guest Welcome/Guest Welcome/g'
+  fi
+}
 
 if [[ -x "$ROOT/tv-hub/scripts/generate-guest-launcher-icons.sh" ]]; then
   "$ROOT/tv-hub/scripts/generate-guest-launcher-icons.sh"
@@ -121,14 +139,15 @@ if [[ -d "$PATCHES/res" ]]; then
 fi
 
 SMALI_DIR="$WORKDIR/guest-apk/smali_classes3/com/cielodeloro/guestwelcome"
-for smali in MainActivity.smali BootReceiver.smali; do
-  if [[ -f "$SMALI_DIR/$smali" ]]; then
-    sed -i \
-      -e "s|http://localhost:8080/guest/|${HUB_URL}|g" \
-      -e "s|http://192.168.2.1:8080/guest/|${HUB_URL}|g" \
-      "$SMALI_DIR/$smali"
-  fi
-done
+apply_generic_apk_branding "$SMALI_DIR"
+if [[ -d "$SMALI_DIR" ]]; then
+  find "$SMALI_DIR" -name '*.smali' -print0 | xargs -0 sed -i \
+    -e "s|http://localhost:8080/guest/|${HUB_URL}|g" \
+    -e "s|http://192.168.2.1:8080/guest/|${HUB_URL}|g" \
+    -e "s|http://172.18.1.137:8080/guest/|${HUB_URL}|g" \
+    -e "s|http://172.16.1.36:18080/guest/|${HUB_URL}|g" \
+    -e "s|http://192.168.1.100:8080/guest/|${HUB_URL}|g"
+fi
 
 APKTOOL_YML="$WORKDIR/guest-apk/apktool.yml"
 if [[ -f "$APKTOOL_YML" ]]; then

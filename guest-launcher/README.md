@@ -1,6 +1,6 @@
 # Guest welcome launcher (Android TV)
 
-Pre-built APK that sets **Aatomhome Guest Welcome** as the TV home app and loads the hub welcome page in a WebView.
+Pre-built APK that sets **Guest Welcome** as the TV home app and loads the hub welcome page in a WebView.
 
 ## Precompiled release
 

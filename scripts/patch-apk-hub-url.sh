@@ -31,14 +31,14 @@ curl -fsSL -o "$APKTOOL_JAR" \
 java -jar "$APKTOOL_JAR" d -f "$APK" -o "$WORKDIR/guest-apk"
 
 SMALI_DIR="$WORKDIR/guest-apk/smali_classes3/com/cielodeloro/guestwelcome"
-for smali in MainActivity.smali BootReceiver.smali; do
-  if [[ -f "$SMALI_DIR/$smali" ]]; then
-    sed -i \
-      -e "s|http://localhost:8080/guest/|${HUB_URL}|g" \
-      -e "s|http://192.168.2.1:8080/guest/|${HUB_URL}|g" \
-      "$SMALI_DIR/$smali"
-  fi
-done
+if [[ -d "$SMALI_DIR" ]]; then
+  find "$SMALI_DIR" -name '*.smali' -print0 | xargs -0 sed -i \
+    -e "s|http://localhost:8080/guest/|${HUB_URL}|g" \
+    -e "s|http://192.168.2.1:8080/guest/|${HUB_URL}|g" \
+    -e "s|http://172.18.1.137:8080/guest/|${HUB_URL}|g" \
+    -e "s|http://172.16.1.36:18080/guest/|${HUB_URL}|g" \
+    -e "s|http://192.168.1.100:8080/guest/|${HUB_URL}|g"
+fi
 
 java -jar "$APKTOOL_JAR" b "$WORKDIR/guest-apk" -o "$WORKDIR/guest-unsigned.apk"
 

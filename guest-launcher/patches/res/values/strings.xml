@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="welcome_accessibility_desc">Returns to the Guest welcome screen after streaming apps are closed.</string>
+    <string name="app_name">Guest Welcome</string>
+    <string name="welcome_accessibility_desc">Returns to the guest welcome screen after streaming apps are closed.</string>
 </resources>

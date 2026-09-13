@@ -49,7 +49,7 @@
 
     invoke-direct {v1, p0}, Landroid/widget/TextView;-><init>(Landroid/content/Context;)V
 
-    const-string v2, "Cielo del Oro"
+    const-string v2, "Guest Welcome"
 
     invoke-virtual {v1, v2}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
 
