@@ -167,11 +167,52 @@ See [HACS.md](HACS.md) for custom component install on HA Green / Forest.
 
 ---
 
+## NVIDIA Shield (network ADB)
+
+Shield TVs use the same guest launcher and hub flow; the hub classifies them as **NVIDIA Shield** after ADB is authorized.
+
+| Field | Example |
+|-------|---------|
+| IP | `172.16.1.220` |
+| ADB port | `5555` (network debugging) |
+| Hub registry | Add device → **Connect** → **Provision** |
+
+### Enable debugging on Shield
+
+1. **Settings → Device Preferences → About** — click **Build** seven times.
+2. **Settings → Device Preferences → Developer options**:
+   - **USB debugging** — On
+   - **Network debugging** — On (shows IP and port, usually `:5555`)
+3. When the hub connects, Shield shows **Allow USB debugging?** — check **Always allow** and tap **OK**.
+
+If the hub reports **unauthorized** and no dialog appears:
+
+- Toggle **Network debugging** off/on for a fresh pairing prompt, or
+- Use **Wireless debugging → Pair device with pairing code** — enter the 6-digit code in the hub **Pair** dialog (pairing port is shown on Shield, often `37xxx`).
+
+### Hub-driven provision (after authorized)
+
+```bash
+# Register (once)
+curl -s -X POST http://172.16.1.36:18080/api/registry \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"NVIDIA Shield","host":"172.16.1.220","port":5555}'
+
+# Connect + install launcher
+curl -s -X POST http://172.16.1.36:18080/api/registry/1/connect
+curl -s -X POST http://172.16.1.36:18080/api/registry/1/provision
+```
+
+Or use the hub UI: **Devices** → select Shield → **Connect** → **Provision New TV**.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Check |
 |---------|--------|
 | TV cannot download APK | TV on same LAN as `.36`? Firewall `18080` open? Try browser on phone first. |
+| Shield **unauthorized** | Approve RSA on TV; or re-pair with 6-digit wireless code. `adb devices` on hub should show `device` not `unauthorized`. |
 | Claim failed | Hub URL exact (no trailing `/guest/`). Room code fresh (**Get room code** again). |
 | TV not in hub list | Registered? Self-register → **Approve** on Setup. |
 | Hub cannot connect ADB | Wireless debugging on? Pair again. Hub must reach TV IP:port — see [NETWORKING.md](NETWORKING.md). |

@@ -638,6 +638,7 @@ function deviceTypeLabel(device) {
   if (profile.device_type_label) return profile.device_type_label;
   if (device?.device_type === "google_tv_streamer") return "Google TV Streamer";
   if (device?.device_type === "google_tv") return "Google TV";
+  if (device?.device_type === "nvidia_shield") return "NVIDIA Shield";
   if (device?.device_type === "android_tv") return "Android TV";
   return "TV";
 }
