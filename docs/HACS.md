@@ -42,8 +42,10 @@ You need **both** for full functionality: container first, then HACS integration
 
 Community HACS checks expect:
 
-- `hacs.json` at repo root
-- `custom_components/<domain>/manifest.json` with `config_flow`
+- `hacs.json` at repo root (valid JSON)
+- `custom_components/<domain>/manifest.json` — **must be valid JSON** (not YAML); include `config_flow: true`
 - `translations/en.json` (or `strings.json` for older HA)
+
+If HACS shows `unexpected character, expected a JSON value`, check `manifest.json` first — a YAML-style manifest triggers that error.
 
 See [HA-PLUGIN-FRAMEWORK.md](HA-PLUGIN-FRAMEWORK.md) for extending the integration.
