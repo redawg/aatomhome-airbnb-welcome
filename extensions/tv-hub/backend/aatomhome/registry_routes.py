@@ -38,6 +38,15 @@ class SelfRegisterBody(BaseModel):
     property_id: int = 1
 
 
+class AppSlotBody(BaseModel):
+    """Path 1 — staff creates a room slot before the TV installs the launcher app."""
+    name: str = Field(..., min_length=1, max_length=120)
+    notes: str | None = Field(
+        default=None,
+        description="Optional label, e.g. Living room — app download path",
+    )
+
+
 def _client_host(request: Request) -> str | None:
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
@@ -53,6 +62,29 @@ async def aatomhome_health() -> dict[str, Any]:
         "status": "ok",
         "extensions": "aatomhome",
         "hub_public_url": hub_public_url(),
+    }
+
+
+@router.post("/api/aatomhome/registry/app-slot")
+async def create_app_slot(body: AppSlotBody) -> dict[str, Any]:
+    """Path 1 — room slot for download-and-claim (no ADB / dev options on TV)."""
+    device_id = await db.create_device(
+        name=body.name.strip(),
+        host="0.0.0.0",
+        port=5555,
+        notes=(body.notes or "app-download").strip(),
+        auto_provision=False,
+    )
+    meta = await store.ensure_meta_for_device(device_id)
+    device = await db.get_device(device_id)
+    return {
+        "ok": True,
+        "provision_mode": "app",
+        "device_id": device_id,
+        "device": device,
+        "claim_code": meta.get("claim_code"),
+        "hub_public_url": hub_public_url(),
+        "message": "Room slot created — install the launcher on the TV, enter the hub URL, then use this room code.",
     }
 
 

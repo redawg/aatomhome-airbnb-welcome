@@ -63,6 +63,28 @@ if marker not in text:
     print("==> Patched main.py — extensions before static mounts")
 else:
     print("==> main.py already has extension bootstrap")
+
+lifespan_hook = """
+    try:
+        from aatomhome.bootstrap import init_aatomhome_db
+        await init_aatomhome_db()
+    except ImportError:
+        pass
+"""
+if "init_aatomhome_db" not in text:
+    needle = "async def lifespan(app: FastAPI):\n    global _reconnect_task"
+    if needle in text:
+        text = text.replace(
+            needle,
+            "async def lifespan(app: FastAPI):\n" + lifespan_hook + "    global _reconnect_task",
+            1,
+        )
+        main_path.write_text(text)
+        print("==> Patched main.py — aatomhome DB init in lifespan")
+    else:
+        print("==> WARN: could not patch lifespan for aatomhome DB init")
+else:
+    print("==> main.py already has lifespan DB init")
 PY
 
 cp "$EXT_ROOT/entrypoint.sh" "$DEST/entrypoint.sh"

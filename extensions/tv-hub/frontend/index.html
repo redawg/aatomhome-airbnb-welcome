@@ -375,36 +375,62 @@
             <div id="setupHaStatus" class="setup-status-banner" hidden></div>
           </section>
 
-          <section class="setup-card setup-card-wide" aria-labelledby="setupLauncherTitle">
-            <h3 id="setupLauncherTitle">Guest launcher app (TV)</h3>
-            <p class="setup-card-lead">Install the welcome app on each TV. Download from this hub, sideload, or install via hub ADB after pairing. On first launch, enter the hub URL below or scan the QR code.</p>
-            <div class="setup-launcher-grid">
-              <div class="setup-launcher-qr">
-                <img id="setupHubQr" alt="QR code — hub URL for TV onboarding" width="180" height="180" />
-                <p class="field-hint">Scan on TV (browser or future in-app scanner) — encodes hub URL</p>
-              </div>
-              <div class="setup-launcher-actions">
-                <dl class="setup-dl">
-                  <dt>Download APK</dt>
-                  <dd>
-                    <a id="setupApkDownload" class="btn btn-primary btn-sm" href="#" download>aatomhome-guest-welcome.apk</a>
-                    <span class="field-hint" id="setupApkMeta"></span>
-                  </dd>
-                  <dt>Hub URL (type on TV)</dt>
-                  <dd><code id="setupLauncherHubUrl" class="setup-mono">—</code> <button type="button" class="btn btn-secondary btn-sm setup-copy" data-copy-target="setupLauncherHubUrl">Copy</button></dd>
-                </dl>
-                <p class="field-hint">Full steps: <a id="setupProvisioningDoc" href="#" target="_blank" rel="noopener">TV provisioning guide</a></p>
-              </div>
+          <section class="setup-card setup-card-wide" aria-labelledby="setupProvisionTitle">
+            <h3 id="setupProvisionTitle">Provision a TV</h3>
+            <p class="setup-card-lead">Two ways to onboard. <strong>Path 1</strong> needs no developer options — download the app and point it at this hub. <strong>Path 2</strong> uses ADB so the hub can push the APK and configure the TV.</p>
+            <div class="setup-path-grid" id="setupPathGrid">
+              <article class="setup-path-card setup-path-recommended" aria-labelledby="setupPathAppTitle">
+                <div class="setup-path-badge">Recommended</div>
+                <h4 id="setupPathAppTitle">Path 1 — Download app</h4>
+                <p class="setup-path-summary">Install the launcher on the TV, enter the hub URL, claim with a room code. No USB or wireless debugging.</p>
+                <ol class="setup-path-steps" id="setupPathAppSteps">
+                  <li>Create a room slot → copy room code</li>
+                  <li>On TV: download &amp; install APK</li>
+                  <li>Launcher → hub URL → room code → Claim</li>
+                </ol>
+                <div class="setup-launcher-grid setup-path-download">
+                  <div class="setup-launcher-qr">
+                    <img id="setupHubQr" alt="QR code — hub URL for TV onboarding" width="140" height="140" />
+                    <p class="field-hint">Hub URL QR</p>
+                  </div>
+                  <div class="setup-launcher-actions">
+                    <dl class="setup-dl">
+                      <dt>Download APK</dt>
+                      <dd>
+                        <a id="setupApkDownload" class="btn btn-primary btn-sm" href="#" download>aatomhome-guest-welcome.apk</a>
+                        <span class="field-hint" id="setupApkMeta"></span>
+                      </dd>
+                      <dt>Hub URL (type on TV)</dt>
+                      <dd><code id="setupLauncherHubUrl" class="setup-mono">—</code> <button type="button" class="btn btn-secondary btn-sm setup-copy" data-copy-target="setupLauncherHubUrl">Copy</button></dd>
+                    </dl>
+                  </div>
+                </div>
+                <div class="toolbar setup-form-actions">
+                  <button type="button" class="btn btn-primary btn-sm" id="btnSetupAppSlot">+ Create room slot</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnSetupRoomCode" disabled title="Select a room slot first">Show room code</button>
+                </div>
+              </article>
+              <article class="setup-path-card" aria-labelledby="setupPathAdbTitle">
+                <h4 id="setupPathAdbTitle">Path 2 — Hub pushes via ADB</h4>
+                <p class="setup-path-summary">Developer options + wireless or network debugging. Hub installs the APK, sets Home, and can manage streaming apps.</p>
+                <ol class="setup-path-steps" id="setupPathAdbSteps">
+                  <li>TV: enable Developer options → debugging</li>
+                  <li>Hub: register TV → Pair → Connect</li>
+                  <li>Provision New TV (TV Management)</li>
+                </ol>
+                <div class="toolbar setup-form-actions">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnSetupAddTv">Register for ADB</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnSetupPairTv">Pair device</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnSetupGoTvs">Open TV Management</button>
+                </div>
+              </article>
             </div>
-          </section>
-
-          <section class="setup-card" aria-labelledby="setupTvTitle">
-            <h3 id="setupTvTitle">TVs &amp; streamers</h3>
-            <p class="setup-card-lead">Register each TV in the hub, generate a room code, then claim from the launcher app — or self-register and approve here.</p>
+            <p class="field-hint setup-provision-doc-link">Guide: <a id="setupProvisioningDoc" href="#" target="_blank" rel="noopener">TV provisioning (two paths)</a></p>
             <div class="setup-tv-stats" id="setupTvStats">
-              <span class="setup-stat"><strong id="setupTvRegistered">0</strong> registered</span>
-              <span class="setup-stat ok"><strong id="setupTvOnline">0</strong> online</span>
-              <span class="setup-stat warn" id="setupTvPendingWrap" hidden><strong id="setupTvPending">0</strong> pending approval</span>
+              <span class="setup-stat"><strong id="setupTvRegistered">0</strong> slots</span>
+              <span class="setup-stat ok"><strong id="setupTvClaimed">0</strong> claimed</span>
+              <span class="setup-stat ok"><strong id="setupTvOnline">0</strong> ADB online</span>
+              <span class="setup-stat warn" id="setupTvPendingWrap" hidden><strong id="setupTvPending">0</strong> pending</span>
             </div>
             <ul class="setup-tv-list" id="setupTvList"></ul>
             <div id="setupPendingList" class="setup-pending-list" hidden></div>
@@ -412,13 +438,7 @@
               <strong>Room code</strong> for <span id="setupRoomCodeDevice">TV</span>:
               <code id="setupRoomCodeValue" class="setup-mono setup-room-code-value">—</code>
               <button type="button" class="btn btn-secondary btn-sm setup-copy" data-copy-target="setupRoomCodeValue">Copy</button>
-              <p class="field-hint">Enter this code in the guest launcher app on the TV → Claim on selected hub.</p>
-            </div>
-            <div class="toolbar setup-form-actions">
-              <button type="button" class="btn btn-primary btn-sm" id="btnSetupAddTv">+ Register TV</button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btnSetupRoomCode" disabled title="Select a registered TV first">Get room code</button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btnSetupPairTv">Pair device (ADB)</button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btnSetupGoTvs">Open TV Management</button>
+              <p class="field-hint">On the TV launcher: enter hub URL → paste this code → <strong>Claim on selected hub</strong>. Or use <strong>Self-register</strong> and approve below.</p>
             </div>
           </section>
 
@@ -762,17 +782,26 @@
             </div>
             <div id="guestExperienceStatus" class="guest-experience-status">Connect a TV to see guest launcher status.</div>
             <div class="guest-provision-checklist" id="guestProvisionChecklist">
-              <div class="guest-provision-checklist-title">New TV setup checklist</div>
-              <ol>
-                <li>On the TV: sign in with <strong>guestcielodeloro@gmail.com</strong> as the main Google account</li>
-                <li>Add the TV to Google Home and enable wireless debugging</li>
-                <li>Register the TV in the hub</li>
-                <li>Hub: save welcome content → <strong>Provision New TV</strong> or <strong>Update all CDO TVs</strong></li>
-                <li>On first Home press, choose <strong>Cielo Guest Welcome</strong> → <strong>Always</strong></li>
-                <li>Enable <strong>Apps only mode</strong> on Google TV (hub button or Settings → Accounts)</li>
-                <li>After reboot or power-on the welcome screen opens automatically</li>
-                <li>Remove any extra profiles on the TV so only the guest account remains</li>
-              </ol>
+              <div class="guest-provision-checklist-title">TV provisioning — two paths</div>
+              <p class="field-hint" style="margin:0 0 0.5rem;">Path 1 needs no dev options. Path 2 uses ADB for hub-driven install and lockdown.</p>
+              <div class="setup-path-grid" style="margin:0;">
+                <div>
+                  <strong>Path 1 — Download app</strong>
+                  <ol>
+                    <li>Setup → <strong>Create room slot</strong> → copy room code</li>
+                    <li>TV: install APK from hub → enter hub URL</li>
+                    <li>Claim with room code (or self-register → approve on hub)</li>
+                  </ol>
+                </div>
+                <div>
+                  <strong>Path 2 — Hub via ADB</strong>
+                  <ol>
+                    <li>TV: Developer options → wireless/network debugging</li>
+                    <li>Register → Pair → Connect → <strong>Provision New TV</strong></li>
+                    <li>Set guest launcher as Home when prompted</li>
+                  </ol>
+                </div>
+              </div>
             </div>
           </div>
           <div id="guestStatusPanel" class="lockdown-steps">
@@ -782,17 +811,33 @@
     </main>
   </div>
 
-  <!-- Register Modal -->
+  <!-- App room slot (Path 1) -->
+  <div class="modal-overlay" id="appSlotModal">
+    <div class="modal">
+      <h2>Create room slot</h2>
+      <p class="modal-hint">Path 1 — no ADB. Creates a named slot and room code. Install the launcher on the TV, enter the hub URL, then claim with this code.</p>
+      <form id="appSlotForm">
+        <div class="form-group"><label>Room / TV name</label><input type="text" name="name" required placeholder="Living room Shield" maxlength="120" /></div>
+        <div class="form-group"><label>Notes</label><input type="text" name="notes" placeholder="Optional — e.g. NVIDIA Shield" /></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="btnCancelAppSlot">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create &amp; show room code</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Register Modal (Path 2 — ADB) -->
   <div class="modal-overlay" id="addModal">
     <div class="modal">
-      <h2>Register TV</h2>
-      <p class="modal-hint">Enable Developer Options → Wireless Debugging on your Google TV Streamer or Android TV. Enter the <strong>pairing port and code</strong> from “Pair device with pairing code” — the hub detects the device type and runs setup automatically.</p>
+      <h2>Register TV for ADB</h2>
+      <p class="modal-hint">Path 2 — enable <strong>Developer options</strong> and <strong>Wireless debugging</strong> (Google TV) or <strong>Network debugging</strong> (Shield). Pair now or use <strong>Pair device</strong> after register.</p>
       <form id="addForm">
         <div class="form-group"><label>Name</label><input type="text" name="name" required placeholder="Living Room TV" /></div>
         <div class="form-group"><label>IP Address</label><input type="text" name="host" required placeholder="192.168.1.100" /></div>
-        <div class="form-group"><label>ADB Connect Port</label><input type="number" name="port" placeholder="auto" /><small style="color:var(--text-muted)">Leave blank — auto-discovered via mDNS after pairing</small></div>
-        <div class="form-group"><label>Pairing Port</label><input type="number" name="pairing_port" placeholder="42237" required /><small style="color:var(--text-muted)">From “Pair device with pairing code” on the TV</small></div>
-        <div class="form-group"><label>Pairing Code</label><input type="text" name="pairing_code" placeholder="123456" maxlength="6" required /></div>
+        <div class="form-group"><label>ADB Connect Port</label><input type="number" name="port" placeholder="5555" /><small style="color:var(--text-muted)">Default 5555 — mDNS may discover TLS port after pairing</small></div>
+        <div class="form-group"><label>Pairing Port (optional)</label><input type="number" name="pairing_port" placeholder="42237" /><small style="color:var(--text-muted)">From “Pair device with pairing code” — or pair separately</small></div>
+        <div class="form-group"><label>Pairing Code (optional)</label><input type="text" name="pairing_code" placeholder="123456" maxlength="6" /></div>
         <div class="form-group"><label>Notes</label><input type="text" name="notes" placeholder="Optional" /></div>
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" id="btnCancelAdd">Cancel</button>

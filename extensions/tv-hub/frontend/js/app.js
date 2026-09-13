@@ -847,6 +847,19 @@ function setSetupHaBanner(ok, message) {
   el.className = `setup-status-banner ${ok ? "ok" : "err"}`;
 }
 
+function renderSetupProvisioningPaths(paths) {
+  const appSteps = document.getElementById("setupPathAppSteps");
+  const adbSteps = document.getElementById("setupPathAdbSteps");
+  const appPath = paths.find(p => p.id === "app");
+  const adbPath = paths.find(p => p.id === "adb");
+  if (appSteps && appPath?.steps?.length) {
+    appSteps.innerHTML = appPath.steps.map(s => `<li>${esc(s)}</li>`).join("");
+  }
+  if (adbSteps && adbPath?.steps?.length) {
+    adbSteps.innerHTML = adbPath.steps.map(s => `<li>${esc(s)}</li>`).join("");
+  }
+}
+
 function renderSetupChecklist(items) {
   const list = document.getElementById("setupChecklist");
   if (!list) return;
@@ -867,12 +880,14 @@ function renderSetupChecklist(items) {
 
 function renderSetupTvList(tvs) {
   const reg = document.getElementById("setupTvRegistered");
+  const claimed = document.getElementById("setupTvClaimed");
   const on = document.getElementById("setupTvOnline");
   const pend = document.getElementById("setupTvPending");
   const pendWrap = document.getElementById("setupTvPendingWrap");
   const list = document.getElementById("setupTvList");
   const pendingBox = document.getElementById("setupPendingList");
   if (reg) reg.textContent = String(tvs?.registered ?? 0);
+  if (claimed) claimed.textContent = String(tvs?.claimed ?? 0);
   if (on) on.textContent = String(tvs?.online ?? 0);
   const pendingCount = tvs?.pending ?? 0;
   if (pend) pend.textContent = String(pendingCount);
@@ -887,10 +902,13 @@ function renderSetupTvList(tvs) {
         const state = d.connection_state === "device" ? "online" : (d.connection_state || "offline");
         const stateLabel = state === "online" ? "Online" : state;
         const selected = setupSelectedDeviceId === d.id ? " active" : "";
+        const mode = d.provision_mode === "app" ? "App" : "ADB";
+        const hostLine = d.host === "0.0.0.0" ? "awaiting claim" : `${esc(d.host || "")}:${esc(String(d.port || 5555))}`;
+        const claimedTag = d.registration_status === "claimed" ? " · claimed" : "";
         return `<li class="setup-tv-selectable${selected}" data-setup-device-id="${d.id}" role="button" tabindex="0">
           <div>
-            <div class="setup-tv-name">${esc(d.name || "TV")}</div>
-            <div class="setup-tv-host">${esc(d.host || "")}:${esc(String(d.port || 5555))}</div>
+            <div class="setup-tv-name">${esc(d.name || "TV")} <span class="setup-tv-mode">${mode}${claimedTag}</span></div>
+            <div class="setup-tv-host">${hostLine}</div>
           </div>
           <span class="badge ${state === "online" ? "online" : "unknown"}">${esc(stateLabel)}</span>
         </li>`;
@@ -1014,6 +1032,7 @@ async function loadSetupStatus() {
     if (provDoc && launcher.provisioning_doc) provDoc.href = launcher.provisioning_doc;
 
     renderSetupChecklist(data.checklist || []);
+    renderSetupProvisioningPaths(data.provisioning_paths || []);
     renderSetupTvList(data.tvs || {});
   } catch (err) {
     if (checklist) {
@@ -2702,6 +2721,37 @@ document.querySelectorAll(".sidebar-nav-item").forEach(btn => {
 document.getElementById("btnSetupRefresh")?.addEventListener("click", () => loadSetupStatus());
 document.getElementById("setupHaForm")?.addEventListener("submit", saveSetupHaConfig);
 document.getElementById("btnSetupHaTest")?.addEventListener("click", testSetupHaConnection);
+document.getElementById("btnSetupAppSlot")?.addEventListener("click", () => openModal("appSlotModal"));
+document.getElementById("btnCancelAppSlot")?.addEventListener("click", () => closeModal("appSlotModal"));
+document.getElementById("appSlotForm")?.addEventListener("submit", async e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const name = fd.get("name")?.toString().trim();
+  const notes = fd.get("notes")?.toString().trim();
+  if (!name) return;
+  try {
+    const res = await api("/aatomhome/registry/app-slot", {
+      method: "POST",
+      body: JSON.stringify({ name, notes: notes || undefined }),
+    });
+    closeModal("appSlotModal");
+    e.target.reset();
+    await loadRegistry();
+    await loadSetupStatus();
+    if (res.device_id) {
+      selectSetupDevice(res.device_id);
+      const panel = document.getElementById("setupRoomCodePanel");
+      const codeEl = document.getElementById("setupRoomCodeValue");
+      const devEl = document.getElementById("setupRoomCodeDevice");
+      if (devEl) devEl.textContent = name;
+      if (codeEl) codeEl.textContent = res.claim_code || "—";
+      if (panel) panel.hidden = false;
+    }
+    toast(res.message || "Room slot created", "success");
+  } catch (err) {
+    toast(err.message || "Could not create room slot", "error");
+  }
+});
 document.getElementById("btnSetupAddTv")?.addEventListener("click", () => openModal("addModal"));
 document.getElementById("btnSetupPairTv")?.addEventListener("click", () => document.getElementById("btnQuickPair")?.click());
 document.getElementById("btnSetupGoTvs")?.addEventListener("click", () => showHubView("devices"));

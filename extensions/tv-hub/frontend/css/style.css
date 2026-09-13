@@ -1753,6 +1753,69 @@ body.activity-log-open .toast {
   word-break: break-word;
 }
 
+.setup-path-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.setup-path-card {
+  position: relative;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.setup-path-card.setup-path-recommended {
+  border-color: rgba(79, 140, 255, 0.45);
+  box-shadow: 0 0 0 1px rgba(79, 140, 255, 0.08);
+}
+
+.setup-path-badge {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  background: rgba(79, 140, 255, 0.12);
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+}
+
+.setup-path-card h4 {
+  font-size: 0.95rem;
+  margin: 0 0 0.35rem;
+  padding-right: 5rem;
+}
+
+.setup-path-summary {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  margin-bottom: 0.65rem;
+}
+
+.setup-path-steps {
+  margin: 0 0 0.75rem 1.1rem;
+  padding: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.setup-path-download {
+  margin-bottom: 0.75rem;
+}
+
+.setup-provision-doc-link {
+  margin: 0.5rem 0 0.75rem;
+}
+
 .setup-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -1897,6 +1960,7 @@ body.activity-log-open .toast {
 }
 
 .setup-tv-list .setup-tv-name { font-weight: 600; }
+.setup-tv-list .setup-tv-mode { font-weight: 500; font-size: 0.72rem; color: var(--accent); }
 .setup-tv-list .setup-tv-host { color: var(--text-muted); font-size: 0.78rem; }
 
 .setup-pending-list {

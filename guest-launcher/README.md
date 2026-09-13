@@ -35,17 +35,17 @@ Full rebuild with boot receiver and accessibility service: use upstream
 
 ## Install on a TV
 
-**HTTP download from hub (recommended for new TVs):**
+Two provisioning paths — see [docs/TV-PROVISIONING.md](../docs/TV-PROVISIONING.md).
+
+**Path 1 — Download app (no dev options):**
 
 ```text
 http://<HUB_HOST>:<PORT>/api/aatomhome/guest-launcher/apk
 ```
 
-Open that URL on the TV browser or Downloader app, install, then launch. On first run enter the hub URL (`http://<HUB_HOST>:<PORT>`) and a **room code** from hub **Setup → Get room code**.
+Hub **Setup → Create room slot** → install APK on TV → hub URL + room code → Claim.
 
-Full walkthrough: [docs/TV-PROVISIONING.md](../docs/TV-PROVISIONING.md).
-
-**Via hub ADB:** register TV → pair wireless debugging → **Provision New TV** or **Setup this TV**.
+**Path 2 — Hub via ADB:** developer options → register → pair → **Provision New TV**.
 
 **Manual ADB:**
 
