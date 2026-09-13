@@ -70,6 +70,8 @@ Full plan: see `.cursor/plans/ha_room_control_center_e561c219.plan.md` in the Cu
 
 **Networking** — [`docs/NETWORKING.md`](docs/NETWORKING.md) · **HA Green** — [`docs/GREEN-HA.md`](docs/GREEN-HA.md)
 
+**Dual-hub TV test** — [`docs/TEST-FRAMEWORK.md`](docs/TEST-FRAMEWORK.md) · `./scripts/deploy-test-framework.sh`
+
 CDO production is frozen; active development happens here.
 
 ### Deploy with an AI agent or from CLI
