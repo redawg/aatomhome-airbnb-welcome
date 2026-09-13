@@ -26,7 +26,7 @@ sign_apk() {
 
   # Verify v2/v3 present (fails if only v1 JAR signing).
   local verify_out
-  verify_out="$(java -jar "$signer" --verify "$apk" 2>&1 || true)"
+  verify_out="$(java -jar "$signer" -y --apks "$apk" 2>&1 || true)"
   if ! grep -qE 'signature verified.*\[v2' <<<"$verify_out"; then
     echo "sign_apk: verify failed — v2/v3 signature missing on $apk" >&2
     echo "$verify_out" >&2
