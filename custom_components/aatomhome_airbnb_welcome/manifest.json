@@ -1,0 +1,10 @@
+domain: aatomhome_airbnb_welcome
+name: Aatomhome Airbnb Welcome
+codeowners: ["@redawg"]
+issue_tracker: https://github.com/redawg/aatomhome-airbnb-welcome/issues
+documentation: https://github.com/redawg/aatomhome-airbnb-welcome
+integration_type: hub
+iot_class: local_polling
+version: "0.3.0"
+requirements: ["aiohttp>=3.9.0"]
+config_flow: true

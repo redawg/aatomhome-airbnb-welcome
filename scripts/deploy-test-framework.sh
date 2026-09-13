@@ -1,41 +1,30 @@
 #!/usr/bin/env bash
-# Build + verify dual-hub test framework (forest-lan + infra3-standalone).
+# Build + verify multi-hub test setup (two container deploys with different host:port).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "========================================="
-echo " Dual-hub test framework deploy"
+echo " Multi-hub test framework"
 echo "========================================="
 
 "$ROOT/scripts/build.sh"
 
-for profile in infra3-standalone forest-lan; do
-  EXAMPLE="$ROOT/deploy/profiles/$profile/env.example"
-  ENV_FILE="$ROOT/deploy/profiles/$profile/.env"
-  if [[ ! -f "$ENV_FILE" ]]; then
-    echo "==> Creating $ENV_FILE from example"
-    cp "$EXAMPLE" "$ENV_FILE"
-    echo "    EDIT $ENV_FILE (HA_LONG_LIVED_TOKEN for forest-lan) before fleet deploy"
-  fi
-done
+echo "Configure two container profiles (example):"
+echo "  ./scripts/configure-deploy.sh --type container --host 192.168.1.10 --port 8080 --force"
+echo "  # second hub: copy .env to deploy/profiles/container-hub-b/.env or use claim UI Hub B URL"
+echo ""
+
+ENV_FILE="${ENV_FILE:-$ROOT/deploy/profiles/container/.env}"
+if [[ -f "$ENV_FILE" ]]; then
+  echo "--- container (primary) ---"
+  ENV_FILE="$ENV_FILE" "$ROOT/scripts/verify-hub.sh" || echo "SKIP — hub not reachable from this host"
+fi
 
 echo ""
-echo "==> Local verify (reachable hubs only)"
-for profile in infra3-standalone forest-lan; do
-  ENV_FILE="$ROOT/deploy/profiles/$profile/.env"
-  echo "--- $profile ---"
-  if ENV_FILE="$ENV_FILE" "$ROOT/scripts/verify-hub.sh"; then
-    echo "OK $profile"
-  else
-    echo "SKIP $profile — hub not reachable from this host (deploy via @redhat-agent)"
-  fi
-  echo ""
-done
-
-echo "Fleet deploy (when workstation SSH blocked):"
-echo "  @redhat-agent → deploy-profile.sh infra3-standalone on 172.16.1.36"
-echo "  @redhat-agent → deploy-profile.sh forest-lan on 172.16.255.250"
+echo "Deploy containers:"
+echo "  ./scripts/deploy-profile.sh container"
 echo ""
-echo "TV app: rebuild guest-launcher APK or use claim UI with both profiles."
+echo "HA: add two integration instances (HACS) with each hub URL."
+echo "TV: claim Hub A and Hub B in guest launcher."
 echo "Docs: docs/TEST-FRAMEWORK.md"

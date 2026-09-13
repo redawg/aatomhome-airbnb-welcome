@@ -57,9 +57,9 @@ Each property needs a stable `HUB_PUBLIC_URL` for APK, DNS, and HA integration:
 
 | Profile | Example hub URL |
 |---------|-----------------|
-| forest-lan | `http://172.16.255.250:8080` or LAN DNS |
-| infra3-standalone | `http://172.16.1.36:18080` (default; configure with `configure-deploy.sh`) |
-| cdo-vpn | `http://172.16.1.36:18080` or on-site `http://172.18.1.137:8080` |
+| container (local) | `http://<HUB_HOST>:<HUB_LISTEN_PORT>` from `configure-deploy.sh` |
+| container (remote) | Same — set `--deploy-host` and `--port` |
+| homeassistant | Integration points at existing `HUB_PUBLIC_URL` (HACS install) |
 
 See [deploy/profiles/README.md](deploy/profiles/README.md) and guest launcher `HubConfig` (saved hub URL after claim).
 

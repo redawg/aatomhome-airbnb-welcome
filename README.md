@@ -33,8 +33,9 @@ aatomhome-airbnb-welcome/
   homeassistant/
     custom_components/
       aatomhome_airbnb_welcome/   # HA integration: turnover + entity picker per TV
+  custom_components/         # HA integration (HACS layout)
   deploy/
-    forest-ha/               # Podman quadlets for HA + tv-hub on aatomhome
+    profiles/container/        # Podman quadlets for tv-hub
   docs/
     ARCHITECTURE.md
     UPSTREAM.md
@@ -53,7 +54,7 @@ Do not deploy experimental builds to the CDO production host without a maintenan
 3. HA bridge — hub proxies light/cover/fan actions
 4. TV room controls UI — D-pad friendly tiles
 5. HA entity picker — assign devices per room from HA
-6. forest-ha deploy bundle
+6. Container + HACS deploy paths
 
 Full plan: see `.cursor/plans/ha_room_control_center_e561c219.plan.md` in the Cursor workspace or `docs/ARCHITECTURE.md`.
 
@@ -64,9 +65,11 @@ Full plan: see `.cursor/plans/ha_room_control_center_e561c219.plan.md` in the Cu
 | **HA integration** | Phase 1 + Phase 2 room_config sync (`v0.2.0`) |
 | **tv-hub extensions** | Claim/self-register, room-config API, TV agent WS + HTTP poll |
 | **Guest launcher** | Hub URL prefs, claim screen, outbound TV agent (source; rebuild APK) |
-| **Deploy profiles** | `forest-lan`, `infra3-standalone`, `cdo-vpn` — see [`deploy/profiles/README.md`](deploy/profiles/README.md) |
+| **Deploy types** | `container` (tv-hub) + `homeassistant` (HACS integration) — [`deploy/profiles/README.md`](deploy/profiles/README.md) |
 
-**Forest Home deploy** — `./scripts/deploy-profile.sh forest-lan` or `./scripts/deploy-forest-home.sh`.
+**Container deploy** — `./scripts/configure-deploy.sh --type container --host YOUR_IP --port 8080` then `./scripts/deploy-profile.sh container`.
+
+**HA integration** — HACS ([`docs/HACS.md`](docs/HACS.md)) or `./scripts/deploy-profile.sh homeassistant`.
 
 **Networking** — [`docs/NETWORKING.md`](docs/NETWORKING.md) · **HA Green** — [`docs/GREEN-HA.md`](docs/GREEN-HA.md)
 

@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * Per-profile hub state — supports dual-backend testing (Forest LAN vs infra3 fleet).
+ * Per-profile hub state — supports multiple hub backends (e.g. dual-hub testing).
  */
 data class HubProfile(
     val id: String,
@@ -20,7 +20,7 @@ class HubConfig(context: Context) {
     val profiles: List<HubProfile> = BUILTIN_PROFILES
 
     var activeProfileId: String
-        get() = prefs.getString(KEY_ACTIVE_PROFILE, PROFILE_FOREST_LAN) ?: PROFILE_FOREST_LAN
+        get() = prefs.getString(KEY_ACTIVE_PROFILE, PROFILE_HUB_A) ?: PROFILE_HUB_A
         set(value) = prefs.edit().putString(KEY_ACTIVE_PROFILE, value).apply()
 
     val activeProfile: HubProfile
@@ -104,23 +104,32 @@ class HubConfig(context: Context) {
 
     companion object {
         const val PREFS_NAME = "aatomhome_hub"
-        const val DEFAULT_HUB_BASE = "http://172.18.1.137:8080"
+        const val DEFAULT_HUB_BASE = "http://192.168.1.10:8080"
 
-        const val PROFILE_FOREST_LAN = "forest-lan"
-        const val PROFILE_INFRA3 = "infra3"
+        const val PROFILE_HUB_A = "hub-a"
+        const val PROFILE_HUB_B = "hub-b"
+
+        /** Legacy profile IDs migrated on read. */
+        private val LEGACY_PROFILE_IDS = mapOf(
+            "forest-lan" to PROFILE_HUB_A,
+            "infra3" to PROFILE_HUB_B,
+            "infra3-standalone" to PROFILE_HUB_B,
+        )
 
         val BUILTIN_PROFILES = listOf(
             HubProfile(
-                PROFILE_FOREST_LAN,
-                "Forest hub (HA LAN / cross-VLAN)",
-                "http://172.16.255.250:8080",
+                PROFILE_HUB_A,
+                "Hub A",
+                "http://192.168.1.10:8080",
             ),
             HubProfile(
-                PROFILE_INFRA3,
-                "Infra3 hub (fleet / same-VLAN test)",
-                "http://172.16.1.36:18080",
+                PROFILE_HUB_B,
+                "Hub B",
+                "http://192.168.1.11:8080",
             ),
         )
+
+        fun normalizeProfileId(id: String): String = LEGACY_PROFILE_IDS[id] ?: id
 
         private const val KEY_ACTIVE_PROFILE = "active_profile"
         private const val KEY_HUB_URL_SUFFIX = "hub_url"

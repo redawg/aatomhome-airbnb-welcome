@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # Copy aatomhome_airbnb_welcome integration to HA config (local path or SSH).
+# Canonical source: custom_components/ at repo root (HACS layout).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SRC="$ROOT/homeassistant/custom_components/aatomhome_airbnb_welcome"
-ENV_FILE="${ENV_FILE:-$ROOT/deploy/forest-home/.env}"
+SRC="$ROOT/custom_components/aatomhome_airbnb_welcome"
+ENV_FILE="${ENV_FILE:-$ROOT/deploy/profiles/homeassistant/.env}"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
-[[ -d "$SRC" ]] || die "Integration source missing: $SRC"
+[[ -d "$SRC" ]] || die "Integration source missing: $SRC (run scripts/sync-ha-integration.sh)"
 
 if [[ -f "$ENV_FILE" ]]; then
   # shellcheck disable=SC1090

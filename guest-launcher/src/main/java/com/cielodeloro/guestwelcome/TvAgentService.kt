@@ -18,7 +18,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Polls every claimed hub profile (Forest LAN + infra3) for guest commands.
+ * Polls every claimed hub profile for guest commands.
  */
 class TvAgentService : Service() {
     private val running = AtomicBoolean(false)

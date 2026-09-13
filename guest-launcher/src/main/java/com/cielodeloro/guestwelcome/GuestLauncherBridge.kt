@@ -18,7 +18,7 @@ class GuestLauncherBridge(
 
     @JavascriptInterface
     fun getActiveProfileId(): String {
-        return hubConfig?.activeProfileId ?: HubConfig.PROFILE_FOREST_LAN
+        return hubConfig?.activeProfileId ?: HubConfig.PROFILE_HUB_A
     }
 
     @JavascriptInterface

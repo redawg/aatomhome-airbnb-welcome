@@ -1,27 +1,33 @@
 #!/usr/bin/env bash
-# Shared deploy env helpers — profile, host, listen port → HUB_PUBLIC_URL.
+# Shared deploy env helpers — deploy type, host, listen port → HUB_PUBLIC_URL.
 # Source from other scripts: source "$(dirname "$0")/lib/deploy-env.sh"
 
 deploy_env_profile_defaults() {
   case "${1:-}" in
-    forest-lan)
-      echo "172.16.255.250 8080"
+    container)
+      echo "127.0.0.1 8080"
       ;;
-    infra3-standalone)
-      echo "172.16.1.36 18080"
-      ;;
-    cdo-vpn)
-      echo "172.16.1.36 18080"
-      ;;
-    forest-ha|aatomhome)
-      echo "172.16.1.30 8080"
+    homeassistant)
+      echo "127.0.0.1 8080"
       ;;
     custom)
+      echo "127.0.0.1 8080"
+      ;;
+    # Legacy aliases (map to container defaults)
+    forest-lan|infra3-standalone|cdo-vpn|forest-ha)
       echo "127.0.0.1 8080"
       ;;
     *)
       echo "127.0.0.1 8080"
       ;;
+  esac
+}
+
+deploy_env_normalize_profile() {
+  case "${1:-}" in
+    forest-lan|infra3-standalone|cdo-vpn|forest-ha) echo "container" ;;
+    container|homeassistant|custom) echo "$1" ;;
+    *) echo "$1" ;;
   esac
 }
 
@@ -62,4 +68,12 @@ deploy_env_sync_urls_from_file() {
     fi
   fi
   return 1
+}
+
+deploy_env_quadlet_dir() {
+  local root="$1" profile="${2:-container}"
+  profile="$(deploy_env_normalize_profile "$profile")"
+  local dir="$root/deploy/profiles/$profile"
+  [[ -d "$dir" ]] || dir="$root/deploy/profiles/container"
+  echo "$dir"
 }

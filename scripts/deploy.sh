@@ -39,8 +39,11 @@ IMAGE="${ADB_TV_HUB_IMAGE:-localhost/aatomhome-tv-hub:latest}"
 echo "==> Building $IMAGE"
 podman build -t "$IMAGE" -f "$ROOT/tv-hub/Containerfile" "$ROOT/tv-hub"
 
-DEPLOY_PROFILE="${DEPLOY_PROFILE:-forest-ha}"
-QUADLET_DIR="$ROOT/deploy/${DEPLOY_PROFILE}"
+DEPLOY_PROFILE="${DEPLOY_PROFILE:-container}"
+QUADLET_DIR="$(dirname "$0")/../deploy/profiles/container"
+# shellcheck source=lib/deploy-env.sh
+source "$ROOT/scripts/lib/deploy-env.sh"
+QUADLET_DIR="$(deploy_env_quadlet_dir "$ROOT" "$DEPLOY_PROFILE")"
 QUADLET_SRC="$QUADLET_DIR/adb-tv-hub.container"
 QUADLET_ENV="$QUADLET_DIR/adb-tv-hub.env"
 if [[ -f "$QUADLET_SRC" ]]; then

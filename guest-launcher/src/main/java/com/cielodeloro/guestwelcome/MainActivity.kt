@@ -38,7 +38,9 @@ class MainActivity : Activity() {
         intent?.getStringExtra("hub_url")?.let {
             hubConfig.applyHubUrl(hubConfig.activeProfileId, it.removeSuffix("/guest/").removeSuffix("/guest"))
         }
-        intent?.getStringExtra("hub_profile")?.let { hubConfig.activeProfileId = it }
+        intent?.getStringExtra("hub_profile")?.let {
+            hubConfig.activeProfileId = HubConfig.normalizeProfileId(it)
+        }
 
         if (!hubConfig.hasAnyClaimedProfile()) {
             showClaimScreen()
@@ -63,7 +65,7 @@ class MainActivity : Activity() {
             setTypeface(null, Typeface.BOLD)
         }
         val subtitle = TextView(this).apply {
-            text = "Register this TV on one or both test hubs (Forest cross-VLAN vs infra3 same-VLAN)"
+            text = "Register this TV on Hub A and/or Hub B (configure URLs in claim screen)"
             textSize = 15f
             setTextColor(0xFFAAB4C8.toInt())
         }
@@ -340,7 +342,9 @@ class MainActivity : Activity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        intent.getStringExtra("hub_profile")?.let { hubConfig.activeProfileId = it }
+        intent.getStringExtra("hub_profile")?.let {
+            hubConfig.activeProfileId = HubConfig.normalizeProfileId(it)
+        }
         intent.getStringExtra("hub_url")?.let {
             hubConfig.applyHubUrl(hubConfig.activeProfileId, it.removeSuffix("/guest/").removeSuffix("/guest"))
             if (::webView.isInitialized) webView.loadUrl(hubConfig.guestUrl())
