@@ -7,5 +7,14 @@ GUEST_LAUNCHER_APK_DEFAULT = f"/app/guest-launcher/{GUEST_LAUNCHER_APK_FILENAME}
 GUEST_ONBOARD_PATH = "/guest/onboard/"
 
 
+def normalize_hub_base(hub_url: str) -> str:
+    """Strip guest/onboard path suffixes so callers can safely append GUEST_ONBOARD_PATH."""
+    base = hub_url.rstrip("/")
+    for suffix in (GUEST_ONBOARD_PATH.rstrip("/"), "/guest"):
+        if base.endswith(suffix):
+            base = base[: -len(suffix)]
+    return base.rstrip("/")
+
+
 def onboard_page_url(hub_url: str) -> str:
-    return f"{hub_url.rstrip('/')}{GUEST_ONBOARD_PATH}"
+    return f"{normalize_hub_base(hub_url)}{GUEST_ONBOARD_PATH}"

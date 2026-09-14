@@ -28,11 +28,23 @@ logger = logging.getLogger("aatomhome.deploy")
 
 async def _require_connected(device: dict) -> str:
     name = device.get("name") or device.get("host")
-    connected, effective_port = await adb.ensure_connected(device["host"], device["port"])
+    host = device["host"]
+    port = device["port"]
+    connected, effective_port = await adb.ensure_connected(host, port)
+    if not connected:
+        # Dev loop: mDNS discover + reconnect (same as POST /api/registry/{id}/connect).
+        try:
+            result = await adb.smart_connect(host, port, None, None)
+            if result.get("ok"):
+                port = int(result.get("connect_port") or port)
+                device["port"] = port
+                connected, effective_port = await adb.ensure_connected(host, port)
+        except Exception as exc:
+            logger.debug("Auto ADB reconnect failed for %s: %s", name, exc)
     if not connected:
         raise ValueError(
-            f"TV not connected over ADB ({device.get('host')}:{device.get('port')}) — "
-            "Connect first, then push the welcome app."
+            f"TV not connected over ADB ({host}:{port}) — "
+            "Enable network debugging on the TV or run dev-push-guest-launcher.sh"
         )
     if effective_port != device["port"]:
         device["port"] = effective_port
@@ -174,8 +186,23 @@ async def deploy_launcher(
 
     launch: dict[str, Any]
     if launch_welcome:
-        onboard_url = onboard_page_url(hub)
-        append_message(messages, f"Opening TV setup at {onboard_url}…")
+        meta = await store.get_meta(device_id)
+        reg = (meta.get("registration_status") or "active").strip()
+        fingerprint = (meta.get("device_fingerprint") or "").strip()
+        hub_claimed = reg in ("claimed", "active") and bool(fingerprint)
+        if hub_claimed:
+            launch_url = guest_page_url(hub)
+            append_message(
+                messages,
+                f"Room claimed — opening guest dashboard at {launch_url}",
+            )
+        elif force_reinstall:
+            launch_url = f"{onboard_page_url(hub).rstrip('/')}/?reprovision=1"
+            append_message(messages, f"Fresh setup — opening {launch_url}")
+        else:
+            launch_url = onboard_page_url(hub)
+            append_message(messages, f"Opening TV setup at {launch_url}…")
+        onboard_url = launch_url
         launch = await launch_guest_welcome(
             serial, user_id, hub, force=True, page_url=onboard_url
         )

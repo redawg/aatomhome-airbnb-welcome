@@ -695,6 +695,69 @@ function stateBadge(state) {
   return `<span class="badge ${cls}">${label}</span>`;
 }
 
+function dashboardTypeLabel(device) {
+  if (device?.dashboard_type) return device.dashboard_type;
+  const mode = device?.dashboard_mode || "cdo_str";
+  return mode === "ha_dashboard" ? "HA" : "STR";
+}
+
+function deviceAdbOnline(device) {
+  if (typeof device?.adb_online === "boolean") return device.adb_online;
+  return device?.connection_state === "device";
+}
+
+function deviceAppConnected(device) {
+  return Boolean(device?.agent_connected);
+}
+
+function canRequestRemoteAdb(device) {
+  if (!device) return false;
+  if (deviceAdbOnline(device)) return false;
+  return deviceAppConnected(device);
+}
+
+async function requestRemoteAdbEnable(deviceId) {
+  const res = await api(`/registry/${deviceId}/request-adb-enable`, { method: "POST" });
+  toast(res.message || "ADB setup sent to TV — follow prompts on screen", "success");
+  await loadRegistry();
+  return res;
+}
+
+function roomStatusPills(device, { compact = false } = {}) {
+  const adbOn = deviceAdbOnline(device);
+  const appOn = Boolean(device?.agent_connected);
+  const dash = dashboardTypeLabel(device);
+  const compactCls = compact ? " room-status-pills--compact" : "";
+  return `<div class="room-status-pills${compactCls}" aria-label="Room status">
+    <span class="room-status-pill room-status-pill--adb ${adbOn ? "on" : "off"}" title="ADB ${adbOn ? "connected" : "offline"}">
+      <span class="room-status-pill-dot" aria-hidden="true"></span>ADB
+    </span>
+    <span class="room-status-pill room-status-pill--app ${appOn ? "on" : "off"}" title="Guest app ${appOn ? "connected" : "offline"}">
+      <span class="room-status-pill-dot" aria-hidden="true"></span>App
+    </span>
+    <span class="room-status-pill room-status-pill--dash dash-${esc(dash.toLowerCase())}" title="Dashboard type">${esc(dash)}</span>
+  </div>`;
+}
+
+function roomCardHtml(device, { active = false, tag = "div", attrs = "" } = {}) {
+  const name = esc(device.room_name || device.name || `Room ${device.id}`);
+  const host = device.host && device.host !== "0.0.0.0"
+    ? `${esc(device.host)}:${device.port || 5555}`
+    : "awaiting claim";
+  const activeCls = active ? " active" : "";
+  const typeBadge = device.device_profile || device.device_type ? deviceTypeBadge(device) : "";
+  return `<${tag} class="device-card room-status-card${activeCls}" data-id="${device.id}"${attrs}>
+    <div class="device-card-top">
+      <div class="name">${name}${device.is_streaming_source ? ' <span class="source-badge">Source</span>' : ""}</div>
+      <div class="meta">${host}</div>
+    </div>
+    <div class="device-card-footer">
+      ${typeBadge}
+      ${roomStatusPills(device)}
+    </div>
+  </${tag}>`;
+}
+
 function deviceProfile(device) {
   return device?.device_profile || {};
 }
@@ -763,6 +826,17 @@ function updateDeviceTypeUi() {
       : "Apps only mode is available on Google TV";
   }
 
+  const adbRemoteBtn = document.getElementById("btnRequestAdbEnable");
+  if (adbRemoteBtn) {
+    const show = canRequestRemoteAdb(selectedDevice);
+    adbRemoteBtn.style.display = show ? "" : "none";
+    const status = (selectedDevice?.adb_setup_status || "").trim();
+    adbRemoteBtn.textContent = status === "requested" || status === "wizard_opened"
+      ? "ADB setup in progress…"
+      : "Enable ADB on TV";
+    adbRemoteBtn.disabled = !show;
+  }
+
   updateTvActionsBar();
 
   if (typeBanner) {
@@ -818,15 +892,9 @@ async function loadRegistry() {
     list.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:1rem;">No TVs registered</p>';
     return;
   }
-  list.innerHTML = registry.map(d => `
-    <div class="device-card ${selectedDevice?.id === d.id ? "active" : ""}" data-id="${d.id}">
-      <div class="name">${esc(d.name)}${d.is_streaming_source ? ' <span class="source-badge">Source</span>' : ""}</div>
-      <div class="meta">${esc(d.host)}:${d.port}</div>
-      <div class="device-card-badges" style="margin-top:0.35rem; display:flex; flex-wrap:wrap; gap:0.35rem; align-items:center;">
-        ${deviceTypeBadge(d)}
-        ${stateBadge(d.connection_state)}
-      </div>
-    </div>`).join("");
+  list.innerHTML = registry.map(d =>
+    roomCardHtml(d, { active: selectedDevice?.id === d.id, tag: "div" })
+  ).join("");
   list.querySelectorAll(".device-card").forEach(c =>
     c.addEventListener("click", () => selectDevice(parseInt(c.dataset.id))));
 }
@@ -984,15 +1052,399 @@ function renderSetupChecklist(items) {
     list.innerHTML = '<li class="setup-checklist-item loading">No checklist data</li>';
     return;
   }
-  list.innerHTML = items.map(item => `
-    <li class="setup-checklist-item ${esc(item.status || "todo")}">
+  const sectionByChecklist = {
+    hub: "overview",
+    tv_slot: "rooms",
+    tv_claimed: "rooms",
+    tv_online: "rooms",
+    tv_pending: "rooms",
+    ha_url: "ha",
+    ha_token: "ha",
+    ha_connect: "ha",
+    ha_integration: "integration",
+  };
+  list.innerHTML = items.map(item => {
+    const jump = sectionByChecklist[item.id];
+    const jumpAttr = jump ? ` data-setup-jump="${jump}" role="button" tabindex="0"` : "";
+    return `<li class="setup-checklist-item ${esc(item.status || "todo")}${jump ? " setup-checklist-jump" : ""}"${jumpAttr}>
       <span class="setup-checklist-icon" aria-hidden="true">${setupChecklistIcon(item.status)}</span>
       <div class="setup-checklist-body">
         <div class="setup-checklist-label">${esc(item.label)}</div>
         <div class="setup-checklist-detail">${esc(item.detail || "")}</div>
       </div>
-    </li>
-  `).join("");
+    </li>`;
+  }).join("");
+  list.querySelectorAll("[data-setup-jump]").forEach(row => {
+    const go = () => navigateSetup(row.dataset.setupJump);
+    row.addEventListener("click", go);
+    row.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        go();
+      }
+    });
+  });
+}
+
+function setupRoomStatusLabel(device) {
+  const reg = (device.registration_status || "active").toLowerCase();
+  if (reg === "claimed") return { text: "Claimed", cls: "claimed" };
+  if (reg === "unclaimed") return { text: "Awaiting TV", cls: "unclaimed" };
+  if (device.connection_state === "device") return { text: "ADB online", cls: "active" };
+  return { text: "Ready", cls: "active" };
+}
+
+function setupRoomTvSummary(device) {
+  const status = setupRoomStatusLabel(device);
+  const reg = (device.registration_status || "").toLowerCase();
+  if (reg === "claimed" && device.host && device.host !== "0.0.0.0") {
+    const name = device.name && device.name !== device.room_name ? device.name : "TV";
+    const online = device.connection_state === "device" ? " · ADB online" : "";
+    return `${name} · ${device.host}${online}`;
+  }
+  if (reg === "claimed") return "TV registered (awaiting IP)";
+  if (device.provision_mode === "adb" && device.host && device.host !== "0.0.0.0") {
+    return `${device.name || "TV"} · ${device.host}:${device.port || 5555}`;
+  }
+  return "No TV registered";
+}
+
+function renderSetupNavRooms(devices) {
+  const list = document.getElementById("setupNavRoomList");
+  if (!list) return;
+  if (!devices.length) {
+    list.innerHTML = "";
+    return;
+  }
+  list.innerHTML = devices.map(d => {
+    const name = esc(d.room_name || d.name || `Room ${d.id}`);
+    const tv = esc(setupRoomTvSummary(d));
+    const active = setupSelectedDeviceId === d.id && activeSetupSection === "rooms" ? " active" : "";
+    return `<button type="button" class="main-nav-room-item${active}" data-setup-section="rooms" data-setup-device-id="${d.id}">
+      <span class="main-nav-room-name">${name}</span>
+      <span class="main-nav-room-tv">${tv}</span>
+    </button>`;
+  }).join("");
+  list.querySelectorAll(".main-nav-room-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      navigateSetup("rooms", parseInt(btn.dataset.setupDeviceId, 10));
+    });
+  });
+}
+
+function renderSetupRoomSubnav(devices) {
+  const nav = document.getElementById("setupRoomSubnav");
+  const empty = document.getElementById("setupRoomSubnavEmpty");
+  if (!nav) return;
+  if (!devices.length) {
+    nav.querySelectorAll(".setup-room-subnav-item").forEach(el => el.remove());
+    if (empty) empty.hidden = false;
+    return;
+  }
+  if (empty) empty.hidden = true;
+  nav.querySelectorAll(".setup-room-subnav-item").forEach(el => el.remove());
+  devices.forEach(d => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `setup-room-subnav-item${setupSelectedDeviceId === d.id ? " active" : ""}`;
+    btn.dataset.setupDeviceId = String(d.id);
+    const name = d.room_name || d.name || `Room ${d.id}`;
+    const tv = setupRoomTvSummary(d);
+    const hostLine = d.host && d.host !== "0.0.0.0"
+      ? `${esc(d.host)}:${d.port || 5555}`
+      : esc(tv);
+    btn.innerHTML = `<span class="setup-room-subnav-name">${esc(name)}</span>
+      <span class="setup-room-subnav-tv">${hostLine}</span>
+      ${roomStatusPills(d, { compact: true })}`;
+    btn.classList.add("room-status-card");
+    btn.addEventListener("click", () => selectSetupDevice(d.id));
+    nav.appendChild(btn);
+  });
+}
+
+function syncSetupRoomExperienceForm() {
+  const draft = setupRoomConfigDraft;
+  const nameInput = document.getElementById("setupRoomDisplayName");
+  const modeSelect = document.getElementById("setupRoomDashboardMode");
+  const haUrlInput = document.getElementById("setupRoomHaDashboardUrl");
+  const haUrlWrap = document.getElementById("setupRoomHaUrlWrap");
+  if (!draft) return;
+  if (nameInput) nameInput.value = draft.room_name || "";
+  if (modeSelect) modeSelect.value = draft.dashboard_mode || "cdo_str";
+  if (haUrlInput) haUrlInput.value = draft.ha_dashboard_url || "";
+  if (haUrlWrap) haUrlWrap.hidden = (draft.dashboard_mode || "cdo_str") !== "ha_dashboard";
+}
+
+function renderSetupRoomControlsList() {
+  const list = document.getElementById("setupRoomControlsList");
+  const countEl = document.getElementById("setupRoomControlsCount");
+  const controls = setupRoomConfigDraft?.controls || [];
+  if (countEl) {
+    countEl.textContent = controls.length
+      ? `${controls.length} assigned`
+      : "0 assigned";
+  }
+  if (!list) return;
+  if (!controls.length) {
+    list.innerHTML = "";
+    return;
+  }
+  list.innerHTML = controls.map((ctrl, idx) => {
+    const label = ctrl.label || ctrl.entity_id || "Device";
+    const entity = ctrl.entity_id || "";
+    return `<li class="setup-room-control-item">
+      <div>
+        <div class="setup-room-control-item-name">${esc(label)}</div>
+        <div class="setup-room-control-item-meta">${esc(entity)}</div>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" data-remove-control="${idx}" aria-label="Remove ${esc(label)}">Remove</button>
+    </li>`;
+  }).join("");
+  list.querySelectorAll("[data-remove-control]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = parseInt(btn.dataset.removeControl, 10);
+      if (!setupRoomConfigDraft?.controls?.[i]) return;
+      setupRoomConfigDraft.controls.splice(i, 1);
+      renderSetupRoomControlsList();
+      populateSetupRoomEntityPicker();
+    });
+  });
+}
+
+function populateSetupRoomEntityPicker() {
+  const pick = document.getElementById("setupRoomEntityPick");
+  if (!pick || !setupHaConnected) return;
+  const assigned = new Set((setupRoomConfigDraft?.controls || []).map(c => c.entity_id));
+  const entities = (setupHaEntitiesCache || []).filter(e => !assigned.has(e.entity_id));
+  pick.innerHTML = `<option value="">Add device…</option>${entities.map(e => {
+    const label = e.label || e.entity_id;
+    const area = e.area ? ` · ${e.area}` : "";
+    return `<option value="${esc(e.entity_id)}">${esc(label)}${esc(area)}</option>`;
+  }).join("")}`;
+}
+
+function addSetupRoomControl(entityId, label) {
+  const id = (entityId || "").trim();
+  if (!id || !setupRoomConfigDraft) return false;
+  if (!/^[a-z_]+\.[a-z0-9_.]+$/i.test(id)) {
+    toast("Entity ID should look like light.living_room", "error");
+    return false;
+  }
+  if ((setupRoomConfigDraft.controls || []).some(c => c.entity_id === id)) {
+    toast("Already assigned to this room", "error");
+    return false;
+  }
+  setupRoomConfigDraft.controls.push({
+    entity_id: id,
+    label: (label || id).trim(),
+    type: "toggle",
+  });
+  renderSetupRoomControlsList();
+  populateSetupRoomEntityPicker();
+  return true;
+}
+
+function updateSetupRoomControlsUi() {
+  const hint = document.getElementById("setupRoomControlsHint");
+  const addRow = document.getElementById("setupRoomControlsAdd");
+  const pick = document.getElementById("setupRoomEntityPick");
+  if (setupHaConnected) {
+    if (hint) hint.textContent = "Guests see these on the TV welcome screen. Pick from Home Assistant or add by entity ID.";
+    if (addRow) addRow.hidden = false;
+    populateSetupRoomEntityPicker();
+  } else {
+    if (hint) hint.textContent = "Home Assistant not connected — add entities by ID (e.g. light.living_room), or connect HA in Setup → Integration.";
+    if (addRow) addRow.hidden = true;
+    if (pick) pick.innerHTML = '<option value="">Connect HA to browse entities</option>';
+  }
+  renderSetupRoomControlsList();
+}
+
+async function ensureSetupHaEntities() {
+  if (!setupHaConnected) return [];
+  if (setupHaEntitiesCache) return setupHaEntitiesCache;
+  try {
+    const res = await api("/aatomhome/setup/homeassistant/entities");
+    setupHaEntitiesCache = res.entities || [];
+    return setupHaEntitiesCache;
+  } catch (_) {
+    setupHaEntitiesCache = [];
+    return [];
+  }
+}
+
+async function loadSetupRoomExperience(device) {
+  const saveStatus = document.getElementById("setupRoomSaveStatus");
+  if (!device) return;
+  setupRoomExperienceDeviceId = device.id;
+  if (saveStatus) saveStatus.textContent = "";
+  try {
+    const data = await api(`/registry/${device.id}/room-config`);
+    const cfg = data.room_config || {};
+    setupRoomConfigDraft = {
+      room_name: cfg.room_name || device.room_name || device.name || "",
+      dashboard_mode: cfg.dashboard_mode || "cdo_str",
+      ha_dashboard_url: cfg.ha_dashboard_url || "",
+      welcome_overrides: cfg.welcome_overrides || {},
+      controls: (cfg.controls || []).map(c => ({
+        entity_id: c.entity_id,
+        label: c.label || c.entity_id,
+        type: c.type || "toggle",
+      })),
+    };
+    syncSetupRoomExperienceForm();
+    await ensureSetupHaEntities();
+    updateSetupRoomControlsUi();
+  } catch (err) {
+    setupRoomConfigDraft = {
+      room_name: device.room_name || device.name || "",
+      dashboard_mode: device.dashboard_mode || "cdo_str",
+      ha_dashboard_url: "",
+      welcome_overrides: {},
+      controls: [],
+    };
+    syncSetupRoomExperienceForm();
+    updateSetupRoomControlsUi();
+    if (saveStatus) {
+      saveStatus.textContent = err.message || "Could not load room settings";
+      saveStatus.className = "setup-room-save-status err";
+    }
+  }
+}
+
+async function saveSetupRoomExperience() {
+  const deviceId = setupRoomExperienceDeviceId;
+  const saveStatus = document.getElementById("setupRoomSaveStatus");
+  if (!deviceId || !setupRoomConfigDraft) return;
+  const nameInput = document.getElementById("setupRoomDisplayName");
+  const modeSelect = document.getElementById("setupRoomDashboardMode");
+  const haUrlInput = document.getElementById("setupRoomHaDashboardUrl");
+  setupRoomConfigDraft.room_name = nameInput?.value?.trim() || "";
+  setupRoomConfigDraft.dashboard_mode = modeSelect?.value || "cdo_str";
+  setupRoomConfigDraft.ha_dashboard_url = haUrlInput?.value?.trim() || "";
+  if (saveStatus) {
+    saveStatus.textContent = "Saving…";
+    saveStatus.className = "setup-room-save-status";
+  }
+  try {
+    await api(`/registry/${deviceId}/room-config`, {
+      method: "PUT",
+      body: {
+        room_name: setupRoomConfigDraft.room_name,
+        dashboard_mode: setupRoomConfigDraft.dashboard_mode,
+        ha_dashboard_url: setupRoomConfigDraft.ha_dashboard_url,
+        welcome_overrides: setupRoomConfigDraft.welcome_overrides,
+        controls: setupRoomConfigDraft.controls,
+      },
+    });
+    if (saveStatus) {
+      saveStatus.textContent = "Saved";
+      saveStatus.className = "setup-room-save-status ok";
+    }
+    toast("Room settings saved", "success");
+    await loadSetupStatus();
+    await loadRegistry();
+    selectSetupDevice(deviceId);
+  } catch (err) {
+    if (saveStatus) {
+      saveStatus.textContent = err.message || "Save failed";
+      saveStatus.className = "setup-room-save-status err";
+    }
+    toast(err.message || "Could not save room settings", "error");
+  }
+}
+
+function renderSetupRoomDetail(device) {
+  const empty = document.getElementById("setupRoomDetailEmpty");
+  const body = document.getElementById("setupRoomDetailBody");
+  if (!device) {
+    if (empty) empty.hidden = false;
+    if (body) body.hidden = true;
+    setupRoomExperienceDeviceId = null;
+    setupRoomConfigDraft = null;
+    return;
+  }
+  if (empty) empty.hidden = true;
+  if (body) body.hidden = false;
+
+  const status = setupRoomStatusLabel(device);
+  const statusEl = document.getElementById("setupRoomDetailStatus");
+  const codeEl = document.getElementById("setupRoomDetailCode");
+  const tvEl = document.getElementById("setupRoomDetailTv");
+  const modeEl = document.getElementById("setupRoomDetailMode");
+  const openBtn = document.getElementById("btnSetupRoomOpenTv");
+
+  if (statusEl) {
+    statusEl.innerHTML = `${esc(status.text)} ${roomStatusPills(device, { compact: true })}`;
+    statusEl.className = `setup-room-status setup-room-status--${status.cls}`;
+  }
+  if (codeEl) codeEl.textContent = device.claim_code || "—";
+  if (tvEl) tvEl.textContent = setupRoomTvSummary(device);
+  if (modeEl) {
+    modeEl.textContent = device.provision_mode === "app"
+      ? "Path 1 — download app + room code"
+      : "Path 2 — ADB push from hub";
+  }
+  if (openBtn) {
+    openBtn.disabled = false;
+    openBtn.onclick = () => {
+      selectDevice(device.id);
+      showHubView("devices");
+    };
+  }
+  const adbBtn = document.getElementById("btnSetupRoomEnableAdb");
+  if (adbBtn) {
+    const show = canRequestRemoteAdb(device);
+    adbBtn.hidden = !show;
+    adbBtn.disabled = !show;
+    const status = (device.adb_setup_status || "").trim();
+    adbBtn.textContent = status === "requested" || status === "wizard_opened"
+      ? "ADB setup in progress…"
+      : "Enable ADB on TV";
+    adbBtn.onclick = async () => {
+      try {
+        await requestRemoteAdbEnable(device.id);
+        await loadSetupStatus();
+      } catch (err) {
+        toast(err.message || "Could not request ADB setup", "error");
+      }
+    };
+  }
+  loadSetupRoomExperience(device);
+}
+
+function renderSetupRoomsUi(devices) {
+  setupRoomsCache = devices || [];
+  renderSetupNavRooms(setupRoomsCache);
+  renderSetupRoomSubnav(setupRoomsCache);
+  if (setupSelectedDeviceId) {
+    const selected = setupRoomsCache.find(d => d.id === setupSelectedDeviceId);
+    if (selected) renderSetupRoomDetail(selected);
+    else if (setupRoomsCache.length) selectSetupDevice(setupRoomsCache[0].id);
+    else renderSetupRoomDetail(null);
+  } else if (setupRoomsCache.length && activeSetupSection === "rooms") {
+    selectSetupDevice(setupRoomsCache[0].id);
+  } else {
+    renderSetupRoomDetail(null);
+  }
+}
+
+async function regenerateRoomCode(deviceId) {
+  try {
+    const res = await api(`/registry/${deviceId}/regenerate-claim`, { method: "POST" });
+    selectSetupDevice(deviceId);
+    const panel = document.getElementById("setupRoomCodePanel");
+    const codeEl = document.getElementById("setupRoomCodeValue");
+    const devEl = document.getElementById("setupRoomCodeDevice");
+    if (devEl) devEl.textContent = res.device_name || `Room #${deviceId}`;
+    if (codeEl) codeEl.textContent = res.claim_code || "—";
+    if (panel) panel.hidden = false;
+    await loadRegistry();
+    await loadSetupStatus();
+    toast(res.message || "New room code ready", "success");
+  } catch (err) {
+    toast(err.message || "Could not issue new code", "error");
+  }
 }
 
 function renderSetupTvList(tvs) {
@@ -1010,24 +1462,24 @@ function renderSetupTvList(tvs) {
   if (pend) pend.textContent = String(pendingCount);
   if (pendWrap) pendWrap.hidden = pendingCount === 0;
 
+  const devices = tvs?.devices || [];
+  renderSetupRoomsUi(devices);
+
   if (list) {
-    const devices = tvs?.devices || [];
     if (!devices.length) {
-      list.innerHTML = '<li style="color:var(--text-muted); border:none; background:transparent;">No TVs registered yet — use Register TV or Pair device.</li>';
+      list.innerHTML = "";
     } else {
       list.innerHTML = devices.map(d => {
-        const state = d.connection_state === "device" ? "online" : (d.connection_state || "offline");
-        const stateLabel = state === "online" ? "Online" : state;
         const selected = setupSelectedDeviceId === d.id ? " active" : "";
         const mode = d.provision_mode === "app" ? "App" : "ADB";
         const hostLine = d.host === "0.0.0.0" ? "awaiting claim" : `${esc(d.host || "")}:${esc(String(d.port || 5555))}`;
         const claimedTag = d.registration_status === "claimed" ? " · claimed" : "";
-        return `<li class="setup-tv-selectable${selected}" data-setup-device-id="${d.id}" role="button" tabindex="0">
-          <div>
-            <div class="setup-tv-name">${esc(d.name || "TV")} <span class="setup-tv-mode">${mode}${claimedTag}</span></div>
+        return `<li class="setup-tv-selectable room-status-card${selected}" data-setup-device-id="${d.id}" role="button" tabindex="0">
+          <div class="setup-tv-selectable-body">
+            <div class="setup-tv-name">${esc(d.room_name || d.name || "TV")} <span class="setup-tv-mode">${mode}${claimedTag}</span></div>
             <div class="setup-tv-host">${hostLine}</div>
+            ${roomStatusPills(d, { compact: true })}
           </div>
-          <span class="badge ${state === "online" ? "online" : "unknown"}">${esc(stateLabel)}</span>
         </li>`;
       }).join("");
       list.querySelectorAll("[data-setup-device-id]").forEach(row => {
@@ -1078,12 +1530,27 @@ function renderSetupTvList(tvs) {
 
 function selectSetupDevice(deviceId) {
   setupSelectedDeviceId = deviceId;
+  try {
+    localStorage.setItem("aatom_setup_room_id", String(deviceId));
+  } catch (_) { /* quota */ }
   document.querySelectorAll(".setup-tv-selectable").forEach(el => {
     el.classList.toggle("active", parseInt(el.dataset.setupDeviceId, 10) === deviceId);
   });
+  document.querySelectorAll(".setup-room-subnav-item").forEach(el => {
+    el.classList.toggle("active", parseInt(el.dataset.setupDeviceId, 10) === deviceId);
+  });
+  document.querySelectorAll(".main-nav-room-item").forEach(el => {
+    el.classList.toggle("active", parseInt(el.dataset.setupDeviceId, 10) === deviceId);
+  });
+  const navCurrent = document.getElementById("setupNavCurrent");
+  const selected = setupRoomsCache.find(d => d.id === deviceId)
+    || (registry || []).find(d => d.id === deviceId);
+  if (navCurrent && activeSetupSection === "rooms" && selected) {
+    navCurrent.textContent = selected.room_name || selected.name || `Room ${deviceId}`;
+  }
+  renderSetupRoomDetail(selected || null);
   const roomBtn = document.getElementById("btnSetupRoomCode");
   if (roomBtn) roomBtn.disabled = !deviceId;
-  const selected = (registry || []).find(d => d.id === deviceId);
   const adbOnline = selected?.connection_state === "device";
   const pushBtn = document.getElementById("btnSetupPushWelcome");
   const apkBtn = document.getElementById("btnSetupUpdateApk");
@@ -1104,22 +1571,178 @@ function renderPropertySelectOptions(selectEl, properties, selectedId) {
   )).join("");
 }
 
+function activePropertyLink() {
+  const prop = hubProperties.find(p => p.id === activePropertyId);
+  return prop?.property_link || "";
+}
+
+function activePropertyRecord() {
+  return hubProperties.find(p => p.id === activePropertyId) || null;
+}
+
+let propertyCoordsManual = false;
+
+function updateCoordsHint() {
+  const hint = document.getElementById("setupCoordsHint");
+  if (!hint) return;
+  hint.textContent = propertyCoordsManual
+    ? "Manual coordinates — edit lat/lon or change the address and save to re-geocode."
+    : "Coordinates are filled from the property address. Edit lat/lon to override.";
+}
+
+function syncPropertyLocationFields({ force = false } = {}) {
+  const prop = activePropertyRecord();
+  if (!prop) return;
+  propertyCoordsManual = Boolean(prop.weather_coords_manual);
+  updateCoordsHint();
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!force && document.activeElement === el) return;
+    el.value = val ?? "";
+  };
+  setVal("setupPropertyAddress", prop.property_address || "");
+  setVal("setupWeatherLocation", prop.weather_location_name || "");
+  setVal(
+    "setupWeatherLat",
+    prop.weather_lat != null && prop.weather_lat !== "" ? String(prop.weather_lat) : "",
+  );
+  setVal(
+    "setupWeatherLon",
+    prop.weather_lon != null && prop.weather_lon !== "" ? String(prop.weather_lon) : "",
+  );
+  setVal(
+    "setupTempestStationId",
+    prop.tempest_station_id != null && prop.tempest_station_id !== ""
+      ? String(prop.tempest_station_id)
+      : "",
+  );
+  const tokenHint = document.getElementById("setupTempestTokenHint");
+  if (tokenHint) {
+    if (prop.tempest_api_token_configured) {
+      const src = prop.tempest_token_source === "env" ? "hub env" : "saved";
+      tokenHint.textContent = `Token configured (${src}${prop.tempest_api_token_preview ? `: ${prop.tempest_api_token_preview}` : ""})`;
+    } else {
+      tokenHint.textContent = "No Tempest token saved yet";
+    }
+  }
+  const status = document.getElementById("setupPropertyLocationStatus");
+  if (status && force) {
+    const parts = [];
+    if (prop.property_address) parts.push("address");
+    if (prop.weather_location_name || prop.weather_lat != null) parts.push("forecast area");
+    if (prop.tempest_station_id) parts.push("Tempest station");
+    if (prop.tempest_api_token_configured) parts.push("Tempest token");
+    status.textContent = parts.length
+      ? `Loaded: ${parts.join(", ")}`
+      : "No address or weather saved yet for this property";
+    status.className = "setup-room-save-status";
+  }
+}
+
+function collectPropertyLocationForm() {
+  const body = {
+    property_address: document.getElementById("setupPropertyAddress")?.value?.trim() || "",
+    weather_location_name: document.getElementById("setupWeatherLocation")?.value?.trim() || "",
+    weather_lat: parseWeatherCoord(document.getElementById("setupWeatherLat")?.value),
+    weather_lon: parseWeatherCoord(document.getElementById("setupWeatherLon")?.value),
+    weather_coords_manual: propertyCoordsManual,
+    tempest_station_id: parseTempestStationId(document.getElementById("setupTempestStationId")?.value),
+  };
+  const token = document.getElementById("setupTempestToken")?.value?.trim() || "";
+  if (token) body.tempest_api_token = token;
+  return body;
+}
+
+async function savePropertyLocation(body, { silent = false, successMsg = "Address & weather saved" } = {}) {
+  const status = document.getElementById("setupPropertyLocationStatus");
+  if (status) {
+    status.textContent = "Saving…";
+    status.className = "setup-room-save-status";
+  }
+  try {
+    const res = await api(`/aatomhome/properties/${activePropertyId}/location`, {
+      method: "PUT",
+      body,
+    });
+    const idx = hubProperties.findIndex(p => p.id === activePropertyId);
+    if (idx >= 0) {
+      hubProperties[idx] = { ...hubProperties[idx], ...res };
+    }
+    const tokenInput = document.getElementById("setupTempestToken");
+    if (tokenInput && body.tempest_api_token) tokenInput.value = "";
+    syncPropertyLocationFields({ force: true });
+    if (status) {
+      status.textContent = "Saved";
+      status.className = "setup-room-save-status ok";
+    }
+    if (!silent) toast(successMsg, "success");
+    return true;
+  } catch (err) {
+    if (status) {
+      status.textContent = err.message || "Save failed";
+      status.className = "setup-room-save-status err";
+    }
+    toast(err.message || "Save failed", "error");
+    return false;
+  }
+}
+
 function syncPropertyAccountFields() {
   const email = activeGuestAccountEmail();
+  const link = activePropertyLink();
   const setupAcct = document.getElementById("setupGuestAccount");
+  const setupLink = document.getElementById("setupPropertyLink");
   const guestAcct = document.getElementById("guestPropertyAccount");
   const label = document.getElementById("guestAccountEmailLabel");
   if (setupAcct && document.activeElement !== setupAcct) setupAcct.value = email;
+  if (setupLink && document.activeElement !== setupLink) setupLink.value = link;
   if (guestAcct && document.activeElement !== guestAcct) guestAcct.value = email;
+  syncPropertyLocationFields();
   if (label) label.textContent = email;
   const hint = document.getElementById("setupGuestAccountHint");
   if (hint) {
-    hint.innerHTML = `Property “${esc(activePropertyName())}” — on each TV sign in on the <strong>main profile</strong> (Android user 0) with <strong>${esc(email)}</strong> before streaming sync or clearing logins.`;
+    const acct = email?.includes("@")
+      ? `with <strong>${esc(email)}</strong>`
+      : "(optional — set a TV Google account above)";
+    hint.innerHTML = `Property “${esc(activePropertyName())}”${link ? ` · link <code>${esc(link)}</code>` : ""} — on each TV sign in on the <strong>main profile</strong> (Android user 0) ${acct} before streaming sync or clearing logins.`;
   }
   renderGuestSignInHints({
     guest_google_account: email,
     profile_short: "Main profile · Android user 0",
     configured: Boolean(email?.includes("@")),
+  });
+  syncPropertyIdentityFields();
+}
+
+function guestPagePreviewPath(propertyId = activePropertyId) {
+  const id = parseInt(propertyId, 10) || 1;
+  return `/guest/?hub_preview=1&property_id=${id}`;
+}
+
+function guestPagePreviewUrl(propertyId = activePropertyId) {
+  return `${window.location.origin}${guestPagePreviewPath(propertyId)}`;
+}
+
+function syncPropertyIdentityFields() {
+  const id = activePropertyId || 1;
+  const name = activePropertyName();
+  const path = guestPagePreviewPath(id);
+  const fullUrl = guestPagePreviewUrl(id);
+
+  const setText = (elId, text) => {
+    const el = document.getElementById(elId);
+    if (el) el.textContent = text;
+  };
+  setText("setupPropertyId", String(id));
+  setText("setupPropertyIdHint", String(id));
+  setText("guestExperiencePropertyId", String(id));
+  setText("guestExperiencePropertyName", name || "—");
+  setText("setupPropertyGuestPageUrl", fullUrl);
+
+  ["setupPropertyGuestPageLink", "guestExperienceGuestPageLink"].forEach(linkId => {
+    const link = document.getElementById(linkId);
+    if (link) link.href = path;
   });
 }
 
@@ -1133,9 +1756,10 @@ async function setActiveProperty(propertyId, { reload = true } = {}) {
     });
     activePropertyId = id;
     syncPropertyAccountFields();
+    syncPropertyIdentityFields();
     if (reload) {
       await loadSetupStatus();
-      await loadGuestWelcomeForm?.();
+      await loadGuestWelcome();
       await loadStreamingMatrix?.();
       await loadGuestExperience();
     }
@@ -1146,8 +1770,8 @@ async function setActiveProperty(propertyId, { reload = true } = {}) {
 
 async function savePropertyGuestAccount(email, { silent = false } = {}) {
   const trimmed = email.trim();
-  if (!trimmed || !trimmed.includes("@")) {
-    toast("Enter a valid Google account email", "error");
+  if (trimmed && !trimmed.includes("@")) {
+    toast("TV Google account must be an email address, or leave blank", "error");
     return false;
   }
   try {
@@ -1177,6 +1801,7 @@ async function loadSetupStatus() {
     renderPropertySelectOptions(document.getElementById("setupPropertySelect"), hubProperties, activePropertyId);
     renderPropertySelectOptions(document.getElementById("guestPropertySelect"), hubProperties, activePropertyId);
     syncPropertyAccountFields();
+    syncPropertyLocationFields({ force: true });
     const ha = data.homeassistant || {};
     const integration = data.integration || {};
 
@@ -1186,6 +1811,7 @@ async function loadSetupStatus() {
     };
     setText("setupHubUrl", hub.public_url);
     setText("setupGuestUrl", hub.guest_url);
+    setText("setupOnboardUrl", hub.onboard_url || `${(hub.public_url || "").replace(/\/$/, "")}/guest/onboard/`);
     setText("setupIntegrationHubUrl", integration.hub_url_hint || hub.public_url);
     const propInput = document.getElementById("setupPropertyName");
     if (propInput && hub.property_name) propInput.value = hub.property_name;
@@ -1199,12 +1825,17 @@ async function loadSetupStatus() {
         : "No token saved yet";
     }
 
+    setupHaConnected = Boolean(ha.connected);
+    if (!setupHaConnected) setupHaEntitiesCache = null;
     if (ha.connected) {
       setSetupHaBanner(true, `Connected to ${ha.location_name || "Home Assistant"}${ha.version ? ` (${ha.version})` : ""}`);
     } else if (ha.last_error) {
       setSetupHaBanner(false, ha.last_error);
     } else {
       setSetupHaBanner(false, "");
+    }
+    if (setupRoomExperienceDeviceId) {
+      updateSetupRoomControlsUi();
     }
 
     const repo = document.getElementById("setupIntegrationRepo");
@@ -1297,11 +1928,109 @@ async function testSetupHaConnection() {
   }
 }
 
+let activeSetupSection = "overview";
+let setupRoomsCache = [];
+let setupHaConnected = false;
+let setupRoomConfigDraft = null;
+let setupHaEntitiesCache = null;
+let setupRoomExperienceDeviceId = null;
+
+const SETUP_SECTION_LABELS = {
+  overview: "Overview",
+  property: "Property",
+  ha: "Home Assistant",
+  rooms: "Rooms & TVs",
+  integration: "HA integration",
+};
+
+const SETUP_SECTION_LEADS = {
+  overview: "Progress checklist and hub URLs.",
+  property: "Property ID, guest page preview, address & weather, and welcome screen content.",
+  ha: "Connect the hub to Home Assistant.",
+  rooms: "Room codes, registered TVs, and provisioning paths.",
+  integration: "Add the Home Assistant integration.",
+};
+
+function closeSetupDropdown() {
+  const menu = document.getElementById("setupDropdownMenu");
+  const toggle = document.getElementById("navSetupToggle");
+  if (menu) menu.hidden = true;
+  if (toggle) toggle.setAttribute("aria-expanded", "false");
+}
+
+function toggleSetupDropdown() {
+  const menu = document.getElementById("setupDropdownMenu");
+  const toggle = document.getElementById("navSetupToggle");
+  if (!menu || !toggle) return;
+  const open = menu.hidden;
+  menu.hidden = !open;
+  toggle.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+function navigateSetup(section, deviceId = null) {
+  showHubView("setup");
+  showSetupSection(section, deviceId);
+  closeSetupDropdown();
+}
+
+function showSetupSection(section, deviceId = null) {
+  const id = section || "overview";
+  activeSetupSection = id;
+  document.querySelectorAll(".setup-subnav-item").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.setupSection === id && !btn.dataset.setupDeviceId);
+  });
+  document.querySelectorAll(".setup-panel").forEach(panel => {
+    const on = panel.dataset.setupPanel === id;
+    panel.classList.toggle("active", on);
+    panel.hidden = !on;
+  });
+  const navCurrent = document.getElementById("setupNavCurrent");
+  if (navCurrent) {
+    if (id === "rooms" && deviceId) {
+      const room = setupRoomsCache.find(d => d.id === deviceId);
+      navCurrent.textContent = room ? (room.room_name || room.name || `Room ${room.id}`) : SETUP_SECTION_LABELS.rooms;
+    } else {
+      navCurrent.textContent = SETUP_SECTION_LABELS[id] || id;
+    }
+  }
+  const lead = document.getElementById("setupViewLead");
+  if (lead) lead.textContent = SETUP_SECTION_LEADS[id] || "";
+  if (id === "property") {
+    syncPropertyLocationFields({ force: true });
+    syncPropertyIdentityFields();
+    loadGuestWelcome();
+  }
+  if (id === "rooms" && deviceId) {
+    selectSetupDevice(deviceId);
+  } else if (id === "rooms" && setupRoomsCache.length && !setupSelectedDeviceId) {
+    selectSetupDevice(setupRoomsCache[0].id);
+  }
+  try {
+    localStorage.setItem("aatom_setup_section", id);
+    if (deviceId) localStorage.setItem("aatom_setup_room_id", String(deviceId));
+  } catch (_) { /* quota */ }
+}
+
+function restoreSetupSection() {
+  let section = "overview";
+  let roomId = null;
+  try {
+    section = localStorage.getItem("aatom_setup_section") || "overview";
+    const savedRoom = localStorage.getItem("aatom_setup_room_id");
+    if (savedRoom) roomId = parseInt(savedRoom, 10) || null;
+  } catch (_) { /* ignore */ }
+  if (!document.querySelector(`[data-setup-panel="${section}"]`)) section = "overview";
+  showSetupSection(section, section === "rooms" ? roomId : null);
+}
+
 function showHubView(view) {
   activeHubView = view;
-  document.querySelectorAll(".sidebar-nav-item").forEach(btn => {
+  document.querySelectorAll(".main-nav-link[data-view]").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.view === view);
   });
+  const setupToggle = document.getElementById("navSetupToggle");
+  if (setupToggle) setupToggle.classList.toggle("active", view === "setup");
+  if (view !== "setup") closeSetupDropdown();
   const setupView = document.getElementById("setupView");
   const guestView = document.getElementById("guestExperienceView");
   const devicePanel = document.getElementById("devicePanel");
@@ -1315,6 +2044,7 @@ function showHubView(view) {
     if (devicePanel) devicePanel.style.display = "none";
     if (emptyState) emptyState.style.display = "none";
     if (tvActionsBar) tvActionsBar.hidden = true;
+    restoreSetupSection();
     loadSetupStatus();
     return;
   }
@@ -1329,7 +2059,7 @@ function showHubView(view) {
       const guestBanner = document.getElementById("guestConnectionBanner");
       if (guestBanner) guestBanner.style.display = "none";
     }
-    loadGuestWelcome();
+    syncPropertyIdentityFields();
     loadGuestExperience();
     loadStreamingMatrix();
     if (selectedDevice && isDeviceOnline()) loadGuestStatus();
@@ -1538,6 +2268,7 @@ let guestWelcomeDefaults = {};
 function fillGuestWelcomeForm(w) {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ""; };
   set("guestWelcomeGuestName", w.guest_name);
+  set("guestWelcomeEyebrow", w.hero_eyebrow);
   set("guestWelcomeTitle", w.title);
   set("guestWelcomeSubtitle", w.subtitle);
   set("guestWifiSsid", w.wifi_ssid);
@@ -1589,6 +2320,7 @@ function parseTempestStationId(raw) {
 
 function collectGuestWelcomeForm(includeGuestName = true) {
   const body = {
+    hero_eyebrow: document.getElementById("guestWelcomeEyebrow")?.value?.trim(),
     title: document.getElementById("guestWelcomeTitle")?.value?.trim(),
     subtitle: document.getElementById("guestWelcomeSubtitle")?.value?.trim(),
     wifi_ssid: document.getElementById("guestWifiSsid")?.value?.trim(),
@@ -1774,7 +2506,7 @@ async function uploadGuestWelcomeLogo(file) {
   const form = new FormData();
   form.append("file", file);
   try {
-    const res = await fetch(`${API}/guest-welcome/logo`, { method: "POST", body: form });
+    const res = await fetch(withPropertyId("/guest-welcome/logo"), { method: "POST", body: form });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
       throw new Error(formatApiError(err.detail) || res.statusText);
@@ -1795,7 +2527,7 @@ async function uploadGuestWelcomeBackground(file) {
   const form = new FormData();
   form.append("file", file);
   try {
-    const res = await fetch(`${API}/guest-welcome/background`, { method: "POST", body: form });
+    const res = await fetch(withPropertyId("/guest-welcome/background"), { method: "POST", body: form });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
       throw new Error(formatApiError(err.detail) || res.statusText);
@@ -3046,11 +3778,80 @@ document.getElementById("tabs").addEventListener("click", e => {
   document.getElementById(`panel-${e.target.dataset.tab}`).classList.add("active");
 });
 
-document.querySelectorAll(".sidebar-nav-item").forEach(btn => {
+document.querySelectorAll(".main-nav-link[data-view]").forEach(btn => {
   btn.addEventListener("click", () => showHubView(btn.dataset.view));
 });
 
+document.getElementById("navSetupToggle")?.addEventListener("click", e => {
+  e.stopPropagation();
+  if (activeHubView !== "setup") showHubView("setup");
+  toggleSetupDropdown();
+});
+
+document.querySelectorAll(".setup-subnav-item").forEach(btn => {
+  btn.addEventListener("click", () => {
+    navigateSetup(btn.dataset.setupSection);
+  });
+});
+
+document.addEventListener("click", e => {
+  const dropdown = document.getElementById("navSetupDropdown");
+  if (dropdown && !dropdown.contains(e.target)) closeSetupDropdown();
+});
+
+document.getElementById("btnSetupRoomCopy")?.addEventListener("click", async () => {
+  const code = document.getElementById("setupRoomDetailCode")?.textContent?.trim();
+  if (!code || code === "—") return;
+  try {
+    await navigator.clipboard.writeText(code);
+    toast("Room code copied", "success");
+  } catch (_) {
+    toast("Copy failed", "error");
+  }
+});
+
+document.getElementById("btnSetupRoomRegen")?.addEventListener("click", async () => {
+  if (!setupSelectedDeviceId) return;
+  await regenerateRoomCode(setupSelectedDeviceId);
+});
+
+document.getElementById("setupRoomDashboardMode")?.addEventListener("change", e => {
+  const wrap = document.getElementById("setupRoomHaUrlWrap");
+  if (wrap) wrap.hidden = e.target.value !== "ha_dashboard";
+  if (setupRoomConfigDraft) setupRoomConfigDraft.dashboard_mode = e.target.value;
+});
+
+document.getElementById("btnSetupRoomAddEntity")?.addEventListener("click", () => {
+  const pick = document.getElementById("setupRoomEntityPick");
+  const entityId = pick?.value?.trim();
+  if (!entityId) return;
+  const entity = (setupHaEntitiesCache || []).find(e => e.entity_id === entityId);
+  if (addSetupRoomControl(entityId, entity?.label)) {
+    if (pick) pick.value = "";
+  }
+});
+
+document.getElementById("btnSetupRoomAddEntityManual")?.addEventListener("click", () => {
+  const input = document.getElementById("setupRoomEntityManual");
+  const entityId = input?.value?.trim();
+  if (!entityId) return;
+  if (addSetupRoomControl(entityId, entityId)) {
+    input.value = "";
+  }
+});
+
+document.getElementById("btnSetupRoomSaveExperience")?.addEventListener("click", () => {
+  saveSetupRoomExperience();
+});
+
+document.getElementById("setupPropertySelect")?.addEventListener("change", e => {
+  setActiveProperty(e.target.value);
+});
+document.getElementById("guestPropertySelect")?.addEventListener("change", e => {
+  setActiveProperty(e.target.value);
+});
 document.getElementById("btnSetupRefresh")?.addEventListener("click", () => loadSetupStatus());
+document.getElementById("btnGuestExperienceOpenSetup")?.addEventListener("click", () => navigateSetup("property"));
 document.getElementById("setupHaForm")?.addEventListener("submit", saveSetupHaConfig);
 document.getElementById("btnSetupHaTest")?.addEventListener("click", testSetupHaConnection);
 document.getElementById("btnSetupAppSlot")?.addEventListener("click", () => openModal("appSlotModal"));
@@ -3071,7 +3872,7 @@ document.getElementById("appSlotForm")?.addEventListener("submit", async e => {
     await loadRegistry();
     await loadSetupStatus();
     if (res.device_id) {
-      selectSetupDevice(res.device_id);
+      navigateSetup("rooms", res.device_id);
       const panel = document.getElementById("setupRoomCodePanel");
       const codeEl = document.getElementById("setupRoomCodeValue");
       const devEl = document.getElementById("setupRoomCodeDevice");
@@ -3087,6 +3888,108 @@ document.getElementById("appSlotForm")?.addEventListener("submit", async e => {
 document.getElementById("btnSetupAddTv")?.addEventListener("click", () => openModal("addModal"));
 document.getElementById("btnSetupPairTv")?.addEventListener("click", () => document.getElementById("btnQuickPair")?.click());
 document.getElementById("btnSetupGoTvs")?.addEventListener("click", () => showHubView("devices"));
+document.getElementById("btnSetupAddProperty")?.addEventListener("click", () => openModal("addPropertyModal"));
+document.getElementById("btnCancelAddProperty")?.addEventListener("click", () => closeModal("addPropertyModal"));
+document.getElementById("addPropertyForm")?.addEventListener("submit", async e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const name = fd.get("name")?.toString().trim();
+  const propertyLink = fd.get("property_link")?.toString().trim();
+  const guestAccount = fd.get("guest_google_account")?.toString().trim() || "";
+  if (!name || !propertyLink) return;
+  try {
+    const res = await api("/aatomhome/properties", {
+      method: "POST",
+      body: { name, property_link: propertyLink, guest_google_account: guestAccount },
+    });
+    closeModal("addPropertyModal");
+    e.target.reset();
+    activePropertyId = res.property_id || res.active_property_id || activePropertyId;
+    await loadSetupStatus();
+    toast(`Property “${name}” created`, "success");
+  } catch (err) {
+    toast(err.message || "Could not create property", "error");
+  }
+});
+document.getElementById("setupGuestAccountForm")?.addEventListener("submit", async e => {
+  e.preventDefault();
+  const email = document.getElementById("setupGuestAccount")?.value?.trim() || "";
+  await savePropertyGuestAccount(email);
+});
+document.getElementById("setupPropertyLinkForm")?.addEventListener("submit", async e => {
+  e.preventDefault();
+  const link = document.getElementById("setupPropertyLink")?.value?.trim();
+  if (!link) {
+    toast("Property link is required", "error");
+    return;
+  }
+  try {
+    const res = await api(`/aatomhome/properties/${activePropertyId}/property-link`, {
+      method: "PUT",
+      body: { property_link: link },
+    });
+    const idx = hubProperties.findIndex(p => p.id === activePropertyId);
+    if (idx >= 0) hubProperties[idx].property_link = res.property_link;
+    syncPropertyAccountFields();
+    toast("Property link saved", "success");
+  } catch (err) {
+    toast(err.message || "Save failed", "error");
+  }
+});
+async function geocodePropertyAddressFromForm({ silent = false } = {}) {
+  const address = document.getElementById("setupPropertyAddress")?.value?.trim() || "";
+  const status = document.getElementById("setupPropertyLocationStatus");
+  if (!address || propertyCoordsManual) return false;
+  if (status) {
+    status.textContent = "Looking up coordinates…";
+    status.className = "setup-room-save-status";
+  }
+  try {
+    const res = await api(`/aatomhome/geocode?address=${encodeURIComponent(address)}`);
+    const latEl = document.getElementById("setupWeatherLat");
+    const lonEl = document.getElementById("setupWeatherLon");
+    const labelEl = document.getElementById("setupWeatherLocation");
+    if (latEl && res.lat != null) latEl.value = String(res.lat);
+    if (lonEl && res.lon != null) lonEl.value = String(res.lon);
+    if (labelEl && res.label && !labelEl.value.trim()) labelEl.value = res.label;
+    propertyCoordsManual = false;
+    updateCoordsHint();
+    if (status) {
+      status.textContent = res.matched_address ? `Located: ${res.matched_address}` : "Coordinates updated from address";
+      status.className = "setup-room-save-status ok";
+    }
+    if (!silent) toast("Coordinates set from address", "success");
+    return true;
+  } catch (err) {
+    if (status) {
+      status.textContent = err.message || "Geocode failed";
+      status.className = "setup-room-save-status err";
+    }
+    if (!silent) toast(err.message || "Could not geocode address", "error");
+    return false;
+  }
+}
+
+document.getElementById("setupPropertyAddress")?.addEventListener("blur", () => {
+  void geocodePropertyAddressFromForm({ silent: true });
+});
+
+document.getElementById("setupWeatherLat")?.addEventListener("input", () => {
+  propertyCoordsManual = true;
+  updateCoordsHint();
+});
+document.getElementById("setupWeatherLon")?.addEventListener("input", () => {
+  propertyCoordsManual = true;
+  updateCoordsHint();
+});
+
+document.getElementById("setupPropertyLocationForm")?.addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!propertyCoordsManual) {
+    await geocodePropertyAddressFromForm({ silent: true });
+  }
+  await savePropertyLocation(collectPropertyLocationForm());
+});
 document.getElementById("btnSetupRoomCode")?.addEventListener("click", async () => {
   if (!setupSelectedDeviceId) {
     toast("Select a registered TV in the list first", "error");
@@ -3788,6 +4691,17 @@ document.getElementById("btnSetupUpdateApk")?.addEventListener("click", () => {
 });
 document.getElementById("btnProvisionTv")?.addEventListener("click", provisionNewTv);
 document.getElementById("btnEnsureGuestReady")?.addEventListener("click", ensureGuestReady);
+
+document.getElementById("btnRequestAdbEnable")?.addEventListener("click", async () => {
+  if (!selectedDevice) return;
+  try {
+    await requestRemoteAdbEnable(selectedDevice.id);
+    await loadRegistry();
+    updateDeviceTypeUi();
+  } catch (err) {
+    toast(err.message || "Could not request ADB setup", "error");
+  }
+});
 document.getElementById("btnAppsOnlyMode")?.addEventListener("click", enableAppsOnlyMode);
 document.getElementById("btnGuestDeployAll")?.addEventListener("click", deployGuestExperienceAll);
 document.getElementById("btnGuestRestore")?.addEventListener("click", restoreGuestExperience);

@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ADB TV Hub</title>
+  <title>Aatom Guest Welcome</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <header>
-    <h1><span>ADB</span> TV Hub</h1>
+    <h1><span>Aatom</span> Guest Welcome</h1>
     <div class="status-badge">
       <span class="status-dot" id="statusDot"></span>
       <span id="statusText">Connecting...</span>
@@ -18,19 +18,37 @@
     </div>
   </header>
 
+  <nav class="main-nav" aria-label="Hub sections">
+    <div class="main-nav-group">
+      <div class="main-nav-dropdown" id="navSetupDropdown">
+        <button
+          type="button"
+          class="main-nav-link main-nav-link--dropdown active"
+          id="navSetupToggle"
+          aria-expanded="false"
+          aria-haspopup="true"
+          aria-controls="setupDropdownMenu"
+        >
+          Setup
+          <span class="main-nav-section-label" id="setupNavCurrent">Overview</span>
+          <span class="main-nav-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="main-nav-dropdown-menu" id="setupDropdownMenu" hidden>
+          <button type="button" class="setup-subnav-item active" data-setup-section="overview">Overview</button>
+          <button type="button" class="setup-subnav-item" data-setup-section="property">Property</button>
+          <button type="button" class="setup-subnav-item" data-setup-section="ha">Home Assistant</button>
+          <button type="button" class="setup-subnav-item" data-setup-section="rooms">Rooms &amp; TVs — overview</button>
+          <div class="main-nav-room-list" id="setupNavRoomList" aria-label="Rooms"></div>
+          <button type="button" class="setup-subnav-item" data-setup-section="integration">HA integration</button>
+        </div>
+      </div>
+      <button type="button" class="main-nav-link" data-view="devices" id="navDevices">TV Management</button>
+      <button type="button" class="main-nav-link" data-view="guest" id="navGuestExperience">Guest Experience</button>
+    </div>
+  </nav>
+
   <div class="layout">
     <aside class="sidebar">
-      <nav class="sidebar-nav" aria-label="Hub sections">
-        <button type="button" class="sidebar-nav-item active" data-view="setup" id="navSetup">
-          <span class="sidebar-nav-label">Setup</span>
-        </button>
-        <button type="button" class="sidebar-nav-item" data-view="devices" id="navDevices">
-          <span class="sidebar-nav-label">TV Management</span>
-        </button>
-        <button type="button" class="sidebar-nav-item" data-view="guest" id="navGuestExperience">
-          <span class="sidebar-nav-label">Guest Experience</span>
-        </button>
-      </nav>
       <div class="section-title">Registered TVs</div>
       <button class="btn btn-primary btn-block" id="btnAddDevice" style="margin-bottom:0.5rem;">+ Register TV</button>
       <button class="btn btn-secondary btn-block" id="btnConnectAll" style="margin-bottom:0.5rem;">Connect all TVs</button>
@@ -62,6 +80,12 @@
               <button type="button" class="btn btn-secondary btn-sm" id="btnWakeBedroomTvs" title="Wake Bedroom TV 2 and BED 3 and reset welcome on each">Wake bedroom TVs</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btnSleepTv" title="Put the selected TV into standby via ADB">Sleep TV</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btnRebootTv" title="Restart the selected TV via ADB">Reboot TV</button>
+            </div>
+          </div>
+          <div class="tv-actions-group">
+            <span class="tv-actions-label">Path 1 — remote ADB</span>
+            <div class="toolbar tv-actions-toolbar">
+              <button type="button" class="btn btn-primary btn-sm" id="btnRequestAdbEnable" title="Guest app is connected but ADB is offline — open wireless debugging wizard on the TV">Enable ADB on TV</button>
             </div>
           </div>
           <div class="tv-actions-group">
@@ -330,74 +354,284 @@
       <div id="setupView" class="setup-view" style="display:none;">
         <div class="setup-view-header">
           <div>
-            <h2 class="setup-view-title">Setup &amp; connections</h2>
-            <p class="setup-view-lead">Connect Home Assistant, register TVs, and add the HA integration — everything in one place.</p>
+            <h2 class="setup-view-title">Setup</h2>
+            <p class="setup-view-lead" id="setupViewLead">Progress checklist and hub URLs.</p>
           </div>
           <button type="button" class="btn btn-secondary btn-sm" id="btnSetupRefresh">Refresh status</button>
         </div>
 
-        <div class="setup-checklist-card" id="setupChecklistCard">
-          <h3>Getting started</h3>
-          <ul class="setup-checklist" id="setupChecklist" aria-live="polite">
-            <li class="setup-checklist-item loading">Loading…</li>
-          </ul>
-        </div>
-
-        <div class="setup-grid">
-          <section class="setup-card" aria-labelledby="setupHubTitle">
-            <h3 id="setupHubTitle">Hub</h3>
-            <p class="setup-card-lead">This server hosts the admin UI, guest welcome page, and TV agent API.</p>
-            <dl class="setup-dl">
-              <dt>Property name</dt>
-              <dd>
-                <form class="setup-inline-form" id="setupPropertyForm">
-                  <input type="text" id="setupPropertyName" placeholder="Forest Home" maxlength="120" required />
-                  <button type="submit" class="btn btn-secondary btn-sm">Save</button>
-                </form>
-              </dd>
-              <dt>Active property (TVs &amp; provisioning)</dt>
-              <dd>
-                <select id="setupPropertySelect" class="setup-property-select" aria-label="Select property for TV provisioning"></select>
-                <p class="field-hint">Welcome content, streaming apps, and guest account are per property.</p>
-              </dd>
-              <dt>TV Google account</dt>
-              <dd>
-                <form class="setup-inline-form" id="setupGuestAccountForm">
-                  <input type="email" id="setupGuestAccount" placeholder="guest@example.com" autocomplete="off" required />
-                  <button type="submit" class="btn btn-secondary btn-sm">Save</button>
-                </form>
-                <p class="field-hint" id="setupGuestAccountHint">Sign in on the TV <strong>main profile</strong> (Android user 0) with this account before streaming apps or login clearing.</p>
-              </dd>
-              <dt>Admin URL</dt>
-              <dd><code id="setupHubUrl" class="setup-mono">—</code> <button type="button" class="btn btn-secondary btn-sm setup-copy" data-copy-target="setupHubUrl">Copy</button></dd>
-              <dt>Guest welcome URL</dt>
-              <dd><code id="setupGuestUrl" class="setup-mono">—</code> <button type="button" class="btn btn-secondary btn-sm setup-copy" data-copy-target="setupGuestUrl">Copy</button></dd>
-            </dl>
-          </section>
-
-          <section class="setup-card" aria-labelledby="setupHaTitle">
-            <h3 id="setupHaTitle">Home Assistant</h3>
-            <p class="setup-card-lead">The hub uses HA for automations, entities, and the custom integration. Create a <strong>long-lived access token</strong> in HA → Profile → Security.</p>
-            <form id="setupHaForm" class="setup-form">
-              <label class="field">
-                <span>Home Assistant URL</span>
-                <input type="url" id="setupHaUrl" name="ha_url" placeholder="http://192.168.1.10:8123" required />
-              </label>
-              <label class="field">
-                <span>Long-lived access token</span>
-                <input type="password" id="setupHaToken" name="ha_token" placeholder="Paste token — leave blank to keep saved token" autocomplete="off" />
-                <span class="field-hint" id="setupHaTokenHint"></span>
-              </label>
-              <div class="toolbar setup-form-actions">
-                <button type="button" class="btn btn-secondary btn-sm" id="btnSetupHaTest">Test connection</button>
-                <button type="submit" class="btn btn-primary btn-sm">Save</button>
+        <div class="setup-layout setup-layout--single">
+          <div class="setup-panels">
+            <section class="setup-panel active" id="setupPanelOverview" data-setup-panel="overview" aria-labelledby="setupOverviewTitle">
+              <h3 class="setup-panel-title" id="setupOverviewTitle">Overview</h3>
+              <p class="setup-panel-lead">Progress checklist and hub URLs for TVs and Home Assistant.</p>
+              <div class="setup-checklist-card" id="setupChecklistCard">
+                <h4>Getting started</h4>
+                <ul class="setup-checklist" id="setupChecklist" aria-live="polite">
+                  <li class="setup-checklist-item loading">Loading…</li>
+                </ul>
               </div>
-            </form>
-            <div id="setupHaStatus" class="setup-status-banner" hidden></div>
-          </section>
+              <section class="setup-card">
+                <h4>Hub URLs</h4>
+                <p class="setup-card-lead">Use these on the TV launcher and when adding the HA integration.</p>
+                <dl class="setup-dl">
+                  <dt>Admin URL</dt>
+                  <dd><code id="setupHubUrl" class="setup-mono">—</code> <button type="button" class="btn btn-secondary btn-sm setup-copy" data-copy-target="setupHubUrl">Copy</button></dd>
+                  <dt>Guest welcome URL</dt>
+                  <dd><code id="setupGuestUrl" class="setup-mono">—</code> <button type="button" class="btn btn-secondary btn-sm setup-copy" data-copy-target="setupGuestUrl">Copy</button></dd>
+                  <dt>TV onboarding URL</dt>
+                  <dd><code id="setupOnboardUrl" class="setup-mono">—</code> <button type="button" class="btn btn-secondary btn-sm setup-copy" data-copy-target="setupOnboardUrl">Copy</button></dd>
+                </dl>
+              </section>
+            </section>
 
-          <section class="setup-card setup-card-wide" aria-labelledby="setupProvisionTitle">
-            <h3 id="setupProvisionTitle">Provision a TV</h3>
+            <section class="setup-panel" id="setupPanelProperty" data-setup-panel="property" aria-labelledby="setupHubTitle" hidden>
+              <h3 class="setup-panel-title" id="setupHubTitle">Property &amp; guest welcome</h3>
+              <p class="setup-panel-lead">Everything guests see on the TV welcome screen (same on every TV). Per-room name, dashboard mode, and HA controls are under <strong>Rooms &amp; TVs</strong>.</p>
+              <section class="setup-card">
+                <dl class="setup-dl">
+                  <dt>Property name</dt>
+                  <dd>
+                    <form class="setup-inline-form" id="setupPropertyForm">
+                      <input type="text" id="setupPropertyName" placeholder="Forest Home" maxlength="120" required />
+                      <button type="submit" class="btn btn-secondary btn-sm">Save</button>
+                    </form>
+                  </dd>
+                  <dt>Active property (TVs &amp; provisioning)</dt>
+                  <dd>
+                    <div class="setup-inline-form">
+                      <select id="setupPropertySelect" class="setup-property-select" aria-label="Select property for TV provisioning"></select>
+                      <button type="button" class="btn btn-secondary btn-sm" id="btnSetupAddProperty">+ Add</button>
+                    </div>
+                    <p class="field-hint">Welcome content, streaming apps, and guest account are per property.</p>
+                  </dd>
+                  <dt>Property ID</dt>
+                  <dd>
+                    <code id="setupPropertyId" class="setup-mono">—</code>
+                    <a id="setupPropertyGuestPageLink" href="/guest/?hub_preview=1&amp;property_id=1" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">View guest page</a>
+                    <button type="button" class="btn btn-secondary btn-sm setup-copy" data-copy-target="setupPropertyGuestPageUrl">Copy preview URL</button>
+                    <p class="field-hint">Preview shows data for property <strong id="setupPropertyIdHint">—</strong> only. Switch active property above to edit another.</p>
+                    <code id="setupPropertyGuestPageUrl" class="setup-mono setup-guest-preview-url" hidden aria-hidden="true">—</code>
+                  </dd>
+                  <dt>Property link</dt>
+                  <dd>
+                    <form class="setup-inline-form" id="setupPropertyLinkForm">
+                      <input type="text" id="setupPropertyLink" placeholder="forest-home, HA config entry, or any ID" maxlength="200" autocomplete="off" />
+                      <button type="submit" class="btn btn-secondary btn-sm">Save</button>
+                    </form>
+                    <p class="field-hint">Free-form key to match Home Assistant or external systems — not limited to email.</p>
+                  </dd>
+                  <dt>TV Google account</dt>
+                  <dd>
+                    <form class="setup-inline-form" id="setupGuestAccountForm">
+                      <input type="email" id="setupGuestAccount" placeholder="guest@example.com (optional)" autocomplete="off" />
+                      <button type="submit" class="btn btn-secondary btn-sm">Save</button>
+                    </form>
+                    <p class="field-hint" id="setupGuestAccountHint">Sign in on the TV <strong>main profile</strong> (Android user 0) with this account before streaming apps or login clearing.</p>
+                  </dd>
+                  <dt>Address &amp; weather</dt>
+                  <dd>
+                    <form id="setupPropertyLocationForm" class="setup-form setup-property-location-form">
+                      <label class="field">
+                        <span>Property address</span>
+                        <input type="text" id="setupPropertyAddress" placeholder="e.g. 123 Main St, City ST 12345" maxlength="240" autocomplete="street-address" />
+                      </label>
+                      <label class="field">
+                        <span>Forecast area (label)</span>
+                        <input type="text" id="setupWeatherLocation" placeholder="e.g. Palm Springs area" maxlength="120" />
+                      </label>
+                      <div class="setup-inline-form setup-weather-coords">
+                        <label class="field">
+                          <span>Latitude</span>
+                          <input type="text" id="setupWeatherLat" placeholder="Auto from address" inputmode="decimal" autocomplete="off" />
+                        </label>
+                        <label class="field">
+                          <span>Longitude</span>
+                          <input type="text" id="setupWeatherLon" placeholder="Auto from address" inputmode="decimal" autocomplete="off" />
+                        </label>
+                      </div>
+                      <p class="field-hint" id="setupCoordsHint">Coordinates are filled from the property address. Edit lat/lon to override.</p>
+                      <label class="field">
+                        <span>Tempest API token</span>
+                        <input type="password" id="setupTempestToken" placeholder="Paste token — leave blank to keep saved" autocomplete="off" />
+                        <span class="field-hint" id="setupTempestTokenHint">No Tempest token saved yet</span>
+                      </label>
+                      <label class="field">
+                        <span>Tempest station ID</span>
+                        <input type="text" id="setupTempestStationId" placeholder="Numeric station ID from tempestwx.com" inputmode="numeric" autocomplete="off" />
+                      </label>
+                      <div class="setup-form-actions">
+                        <button type="submit" class="btn btn-secondary btn-sm">Save address &amp; weather</button>
+                        <span class="setup-room-save-status" id="setupPropertyLocationStatus" aria-live="polite"></span>
+                      </div>
+                    </form>
+                    <p class="field-hint">Property-wide on every TV. Address sets lat/lon automatically (edit coordinates to override). Tempest token from <a href="https://tempestwx.com/api" target="_blank" rel="noopener noreferrer">tempestwx.com/api</a> — when set, live roof-station data is used; otherwise Open-Meteo uses lat/lon above. Local hiking trails and activity tips use these coordinates.</p>
+                  </dd>
+                </dl>
+              </section>
+              <section class="setup-card setup-card-wide">
+                <h4>Guest welcome screen</h4>
+                <p class="field-hint" style="margin-top:0;">Branding, copy, Wi‑Fi, rules, and preview — served live at <code>/guest/</code> on every TV. Save updates online TVs automatically.</p>
+                <div class="guest-welcome-layout">
+                  <div class="guest-welcome-form">
+                    <div class="guest-welcome-form-section">
+                      <div class="guest-welcome-form-heading">Branding</div>
+                      <p class="field-hint">Logo and background appear on every TV. Uploads save to property defaults.</p>
+                      <div class="guest-logo-row">
+                        <img id="guestWelcomeLogo" class="guest-welcome-logo" alt="Property logo" />
+                        <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+                          Upload logo
+                          <input type="file" id="guestWelcomeLogoUpload" accept="image/*" hidden />
+                        </label>
+                      </div>
+                      <div class="guest-logo-row">
+                        <img id="guestWelcomeBackground" class="guest-welcome-bg-thumb" alt="Welcome background" />
+                        <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+                          Upload background
+                          <input type="file" id="guestWelcomeBackgroundUpload" accept="image/*" hidden />
+                        </label>
+                      </div>
+                      <label class="kids-theme-field">
+                        <span>Guest name (per stay — leave blank between guests)</span>
+                        <div class="guest-name-row">
+                          <input type="text" id="guestWelcomeGuestName" placeholder="e.g. Sarah" />
+                          <button type="button" class="btn btn-secondary btn-sm" id="btnGuestCheckIn" title="Check in guest and update TVs">Check in</button>
+                          <button type="button" class="btn btn-secondary btn-sm" id="btnGuestCheckOut" title="Clear guest name between stays">Check out</button>
+                        </div>
+                      </label>
+                      <div class="kids-theme-colors">
+                        <label class="kids-theme-field">
+                          <span>Check-in date</span>
+                          <input type="date" id="guestCheckInDate" />
+                        </label>
+                        <label class="kids-theme-field">
+                          <span>Check-out date</span>
+                          <input type="date" id="guestCheckOutDate" />
+                        </label>
+                      </div>
+                      <p class="field-hint">Stay dates drive the weather forecast and hiking recommendations on TV.</p>
+                      <div class="guest-welcome-form-heading" style="margin-top:0.75rem;">Hero text</div>
+                      <label class="kids-theme-field">
+                        <span>Eyebrow</span>
+                        <input type="text" id="guestWelcomeEyebrow" placeholder="Welcome to Forest Home" maxlength="120" />
+                      </label>
+                      <label class="kids-theme-field">
+                        <span>Title</span>
+                        <input type="text" id="guestWelcomeTitle" placeholder="Welcome to Cielo del Oro" maxlength="120" />
+                      </label>
+                      <label class="kids-theme-field">
+                        <span>Subtitle</span>
+                        <input type="text" id="guestWelcomeSubtitle" placeholder="Connect to WiFi and choose a streaming service" maxlength="200" />
+                      </label>
+                      <p class="field-hint">Leave eyebrow blank to show the room name on each TV.</p>
+                    </div>
+                    <div class="guest-welcome-form-section">
+                      <div class="guest-welcome-form-heading">WiFi &amp; stay</div>
+                      <div class="kids-theme-colors">
+                        <label class="kids-theme-field">
+                          <span>WiFi network</span>
+                          <input type="text" id="guestWifiSsid" placeholder="Guest network name" />
+                        </label>
+                        <label class="kids-theme-field">
+                          <span>WiFi password</span>
+                          <input type="text" id="guestWifiPassword" placeholder="Password" />
+                        </label>
+                      </div>
+                      <label class="kids-theme-field">
+                        <span>Checkout time</span>
+                        <input type="text" id="guestCheckoutTime" placeholder="11:00 AM" />
+                      </label>
+                      <label class="kids-theme-field">
+                        <span>Digital guidebook URL (QR on TV)</span>
+                        <input type="url" id="guestGuidebookUrl" placeholder="https://your-guidebook-link.com" />
+                      </label>
+                    </div>
+                    <div class="guest-welcome-form-section">
+                      <div class="guest-welcome-form-heading">Guest content</div>
+                      <p class="field-hint">Hiking trails and regional tips are added automatically from the property address when local tips are left blank.</p>
+                      <label class="kids-theme-field">
+                        <span>House rules</span>
+                        <textarea id="guestHouseRules" rows="3" placeholder="Quiet hours, no smoking, etc."></textarea>
+                      </label>
+                      <label class="kids-theme-field">
+                        <span>Local tips (optional)</span>
+                        <textarea id="guestLocalTips" rows="3" placeholder="Coffee, dining, groceries — trails are added automatically"></textarea>
+                      </label>
+                      <label class="kids-theme-field">
+                        <span>TV instructions</span>
+                        <textarea id="guestTvInstructions" rows="2" placeholder="Press Home to return here. Select a streaming app and sign in."></textarea>
+                      </label>
+                      <label class="kids-theme-field">
+                        <span>Thermostat</span>
+                        <input type="text" id="guestThermostatInfo" placeholder="Set to 72°F — adjust with remote on wall" />
+                      </label>
+                      <div class="kids-theme-colors">
+                        <label class="kids-theme-field">
+                          <span>Parking</span>
+                          <input type="text" id="guestParkingInfo" placeholder="Driveway — max 2 cars" />
+                        </label>
+                        <label class="kids-theme-field">
+                          <span>Trash &amp; recycling</span>
+                          <input type="text" id="guestTrashInfo" placeholder="Bins by garage — pickup Tuesday" />
+                        </label>
+                      </div>
+                      <div class="kids-theme-colors">
+                        <label class="kids-theme-field">
+                          <span>Emergency contact</span>
+                          <input type="text" id="guestEmergencyName" placeholder="Host name" />
+                        </label>
+                        <label class="kids-theme-field">
+                          <span>Emergency phone</span>
+                          <input type="text" id="guestEmergencyPhone" placeholder="Phone number" />
+                        </label>
+                      </div>
+                    </div>
+                    <div class="toolbar guest-welcome-actions" style="margin:0.25rem 0 0;">
+                      <button type="button" class="btn btn-primary btn-sm" id="btnGuestWelcomeSave">Save welcome</button>
+                      <button type="button" class="btn btn-secondary btn-sm" id="btnGuestWelcomeSaveDefaults">Save property defaults</button>
+                      <button type="button" class="btn btn-secondary btn-sm" id="btnGuestWelcomeLoadDefaults">Load defaults</button>
+                      <button type="button" class="btn btn-secondary btn-sm" id="btnGuestWelcomeReset">Reset live to defaults</button>
+                      <button type="button" class="btn btn-secondary btn-sm" id="btnGuestWelcomeApply">Apply welcome to TV</button>
+                    </div>
+                    <div id="guestWelcomeMeta" class="guest-welcome-meta"></div>
+                  </div>
+                  <div class="guest-welcome-preview-wrap">
+                    <div class="guest-welcome-preview-label">Welcome screen preview</div>
+                    <div id="guestWelcomePreviewViewport" class="guest-welcome-preview-viewport">
+                      <iframe id="guestWelcomePreview" class="guest-welcome-preview" title="Welcome screen preview" loading="lazy"></iframe>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </section>
+
+            <section class="setup-panel" id="setupPanelHa" data-setup-panel="ha" aria-labelledby="setupHaTitle" hidden>
+              <h3 class="setup-panel-title" id="setupHaTitle">Home Assistant setup</h3>
+              <p class="setup-panel-lead">Connect the hub to HA for automations and entities. Create a <strong>long-lived access token</strong> in HA → Profile → Security.</p>
+              <section class="setup-card">
+                <form id="setupHaForm" class="setup-form">
+                  <label class="field">
+                    <span>Home Assistant URL</span>
+                    <input type="url" id="setupHaUrl" name="ha_url" placeholder="http://192.168.1.10:8123" required />
+                  </label>
+                  <label class="field">
+                    <span>Long-lived access token</span>
+                    <input type="password" id="setupHaToken" name="ha_token" placeholder="Paste token — leave blank to keep saved token" autocomplete="off" />
+                    <span class="field-hint" id="setupHaTokenHint"></span>
+                  </label>
+                  <div class="toolbar setup-form-actions">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btnSetupHaTest">Test connection</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                  </div>
+                </form>
+                <div id="setupHaStatus" class="setup-status-banner" hidden></div>
+              </section>
+            </section>
+
+            <section class="setup-panel" id="setupPanelRooms" data-setup-panel="rooms" aria-labelledby="setupProvisionTitle" hidden>
+              <h3 class="setup-panel-title" id="setupProvisionTitle">Rooms &amp; TV setup</h3>
+              <p class="setup-panel-lead">Create room slots and 6-character codes for Path 1 (download app), or register TVs for Path 2 (ADB push).</p>
+              <section class="setup-card setup-card-wide">
             <p class="setup-card-lead">Two ways to onboard. <strong>Path 1</strong> needs no developer options — download the app and point it at this hub. <strong>Path 2</strong> uses ADB so the hub can push the APK and configure the TV. For streaming apps, each TV must be signed in on the <strong>main profile</strong> with the property guest Google account below.</p>
             <div class="setup-guest-signin" id="setupGuestSignInPanel" hidden>
               <div class="setup-guest-signin-head">
@@ -468,36 +702,117 @@
             </div>
             <p class="field-hint setup-provision-doc-link">Guide: <a id="setupProvisioningDoc" href="#" target="_blank" rel="noopener">TV provisioning (two paths)</a></p>
             <div class="setup-tv-stats" id="setupTvStats">
-              <span class="setup-stat"><strong id="setupTvRegistered">0</strong> slots</span>
+              <span class="setup-stat"><strong id="setupTvRegistered">0</strong> rooms</span>
               <span class="setup-stat ok"><strong id="setupTvClaimed">0</strong> claimed</span>
               <span class="setup-stat ok"><strong id="setupTvOnline">0</strong> ADB online</span>
               <span class="setup-stat warn" id="setupTvPendingWrap" hidden><strong id="setupTvPending">0</strong> pending</span>
             </div>
-            <ul class="setup-tv-list" id="setupTvList"></ul>
+            <div class="setup-rooms-wrap">
+              <h4 class="setup-rooms-title">Rooms</h4>
+              <p class="field-hint setup-rooms-lead">Select a room to view its code and registered TV. Rooms also appear under <strong>Setup</strong> in the top navigation.</p>
+              <div class="setup-rooms-layout">
+                <nav class="setup-room-subnav" id="setupRoomSubnav" aria-label="Room list">
+                  <p class="setup-room-subnav-empty" id="setupRoomSubnavEmpty">No rooms yet — create a room slot above.</p>
+                </nav>
+                <div class="setup-room-detail" id="setupRoomDetail">
+                  <div class="setup-room-detail-empty" id="setupRoomDetailEmpty">
+                    <p>Select a room from the list, or create a new room slot.</p>
+                  </div>
+                  <div class="setup-room-detail-body" id="setupRoomDetailBody" hidden>
+                    <div class="setup-room-detail-header">
+                      <div class="setup-room-name-header">
+                        <label class="setup-room-name-label" for="setupRoomDisplayName">Room name</label>
+                        <input type="text" id="setupRoomDisplayName" class="input setup-room-name-input" placeholder="Living Room" autocomplete="off">
+                      </div>
+                      <span class="setup-room-status" id="setupRoomDetailStatus">—</span>
+                    </div>
+                    <section class="setup-room-experience" id="setupRoomExperience">
+                      <h6 class="setup-room-experience-title">This TV only</h6>
+                      <p class="field-hint setup-room-experience-lead">Weather, local tips, Wi‑Fi, and streaming are the same on every TV (property Setup). Here you only set the <strong>room name</strong> and which <strong>Home Assistant devices</strong> this TV can control.</p>
+                      <div class="setup-field">
+                        <label for="setupRoomDashboardMode">Guest dashboard</label>
+                        <select id="setupRoomDashboardMode" class="input">
+                          <option value="cdo_str">Cielo del Oro STR — full guest welcome</option>
+                          <option value="ha_dashboard">Home Assistant — room controls focus</option>
+                        </select>
+                      </div>
+                      <div class="setup-field" id="setupRoomHaUrlWrap" hidden>
+                        <label for="setupRoomHaDashboardUrl">HA Lovelace path or URL</label>
+                        <input type="text" id="setupRoomHaDashboardUrl" class="input setup-mono" placeholder="lovelace/living-room or https://ha.home/lovelace/room-tv" autocomplete="off">
+                        <p class="field-hint">Leave blank for <code>lovelace/default_view</code>. Hub proxies the dashboard so the TV never sees your HA token.</p>
+                      </div>
+                      <div class="setup-room-controls" id="setupRoomControlsSection">
+                        <div class="setup-room-controls-header">
+                          <span class="setup-room-controls-label">Devices this room can control</span>
+                          <span class="setup-room-controls-badge" id="setupRoomControlsCount">0 assigned</span>
+                        </div>
+                        <p class="field-hint" id="setupRoomControlsHint">Connect Home Assistant in Setup → Integration to pick entities, or add by entity ID below.</p>
+                        <ul class="setup-room-controls-list" id="setupRoomControlsList"></ul>
+                        <div class="setup-room-controls-add" id="setupRoomControlsAdd">
+                          <select id="setupRoomEntityPick" class="input" aria-label="Add Home Assistant entity">
+                            <option value="">Add from Home Assistant…</option>
+                          </select>
+                          <button type="button" class="btn btn-secondary btn-sm" id="btnSetupRoomAddEntity">Add</button>
+                        </div>
+                        <div class="setup-room-controls-manual">
+                          <input type="text" id="setupRoomEntityManual" class="input setup-mono" placeholder="light.living_room" autocomplete="off" aria-label="Entity ID">
+                          <button type="button" class="btn btn-secondary btn-sm" id="btnSetupRoomAddEntityManual">Add by ID</button>
+                        </div>
+                      </div>
+                      <div class="toolbar setup-form-actions setup-room-experience-actions">
+                        <button type="button" class="btn btn-primary btn-sm" id="btnSetupRoomSaveExperience">Save room settings</button>
+                        <span class="setup-room-save-status" id="setupRoomSaveStatus" aria-live="polite"></span>
+                      </div>
+                    </section>
+                    <dl class="setup-dl setup-room-detail-dl">
+                      <dt>Room code</dt>
+                      <dd>
+                        <code class="setup-mono setup-room-code-value" id="setupRoomDetailCode">—</code>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnSetupRoomCopy">Copy</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnSetupRoomRegen">New code</button>
+                      </dd>
+                      <dt>Registered TV</dt>
+                      <dd id="setupRoomDetailTv">No TV registered yet</dd>
+                      <dt>Provisioning</dt>
+                      <dd id="setupRoomDetailMode">—</dd>
+                    </dl>
+                    <div class="toolbar setup-form-actions">
+                      <button type="button" class="btn btn-primary btn-sm" id="btnSetupRoomEnableAdb" disabled title="Requires guest app connected (App pill on)">Enable ADB on TV</button>
+                      <button type="button" class="btn btn-secondary btn-sm" id="btnSetupRoomOpenTv" disabled>Open in TV Management</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ul class="setup-tv-list" id="setupTvList" hidden aria-hidden="true"></ul>
             <div id="setupPendingList" class="setup-pending-list" hidden></div>
             <div class="setup-room-code" id="setupRoomCodePanel" hidden>
               <strong>Room code</strong> for <span id="setupRoomCodeDevice">TV</span>:
               <code id="setupRoomCodeValue" class="setup-mono setup-room-code-value">—</code>
               <button type="button" class="btn btn-secondary btn-sm setup-copy" data-copy-target="setupRoomCodeValue">Copy</button>
-              <p class="field-hint">On the TV launcher: enter hub URL → paste this code → <strong>Claim on selected hub</strong>. Or use <strong>Self-register</strong> and approve below.</p>
+              <p class="field-hint">On the TV: open onboarding → enter this code. After <strong>New code</strong>, use <strong>Enter new room code</strong> on the TV first.</p>
             </div>
-          </section>
+              </section>
+            </section>
 
-          <section class="setup-card" aria-labelledby="setupIntegrationTitle">
-            <h3 id="setupIntegrationTitle">Home Assistant integration</h3>
-            <p class="setup-card-lead">After HA is connected, add the integration so automations and entities sync both ways.</p>
-            <ol class="setup-steps">
-              <li>In Home Assistant: <strong>Settings → Devices &amp; services → Add integration</strong></li>
-              <li>Search for <strong>Aatomhome Airbnb Welcome</strong> (install via HACS if needed)</li>
-              <li>Enter this hub URL: <code id="setupIntegrationHubUrl" class="setup-mono">—</code></li>
-              <li>Complete pairing — TVs registered here appear in HA</li>
-            </ol>
-            <p class="field-hint">
-              HACS custom repo:
-              <a id="setupIntegrationRepo" href="https://github.com/redawg/aatomhome-airbnb-welcome" target="_blank" rel="noopener">redawg/aatomhome-airbnb-welcome</a>
-              · <a id="setupIntegrationDocs" href="#" target="_blank" rel="noopener">Setup docs</a>
-            </p>
-          </section>
+            <section class="setup-panel" id="setupPanelIntegration" data-setup-panel="integration" aria-labelledby="setupIntegrationTitle" hidden>
+              <h3 class="setup-panel-title" id="setupIntegrationTitle">Home Assistant integration</h3>
+              <p class="setup-panel-lead">After HA is connected, add the integration so automations and entities sync both ways.</p>
+              <section class="setup-card">
+                <ol class="setup-steps">
+                  <li>In Home Assistant: <strong>Settings → Devices &amp; services → Add integration</strong></li>
+                  <li>Search for <strong>Aatomhome Airbnb Welcome</strong> (install via HACS if needed)</li>
+                  <li>Enter this hub URL: <code id="setupIntegrationHubUrl" class="setup-mono">—</code> <button type="button" class="btn btn-secondary btn-sm setup-copy" data-copy-target="setupIntegrationHubUrl">Copy</button></li>
+                  <li>Complete pairing — TVs registered here appear in HA</li>
+                </ol>
+                <p class="field-hint">
+                  HACS custom repo:
+                  <a id="setupIntegrationRepo" href="https://github.com/redawg/aatomhome-airbnb-welcome" target="_blank" rel="noopener">redawg/aatomhome-airbnb-welcome</a>
+                  · <a id="setupIntegrationDocs" href="#" target="_blank" rel="noopener">Setup docs</a>
+                </p>
+              </section>
+            </section>
+          </div>
         </div>
       </div>
 
@@ -682,156 +997,18 @@
           </details>
           <div class="guest-experience-section" id="guestExperienceSection">
             <div class="section-title">Guest welcome</div>
-            <p class="kids-theme-lead">Content below is served live to TVs at <code>/guest/</code>. Use <strong>property defaults</strong> for baseline info and <strong>Save welcome</strong> (or check-in) when a guest arrives. See the <strong>Settings guide</strong> above for details on each control.</p>
-            <div class="guest-welcome-layout">
-              <div class="guest-welcome-form">
-                <div class="guest-welcome-form-section">
-                  <div class="guest-welcome-form-heading">Branding</div>
-                  <p class="field-hint">Logo and titles appear at the top of the TV welcome screen. Saved to property defaults unless you use Save welcome for a one-off change.</p>
-                  <div class="guest-logo-row">
-                    <img id="guestWelcomeLogo" class="guest-welcome-logo" alt="Property logo" />
-                    <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
-                      Upload logo
-                      <input type="file" id="guestWelcomeLogoUpload" accept="image/*" hidden />
-                    </label>
-                  </div>
-                  <div class="guest-logo-row">
-                    <img id="guestWelcomeBackground" class="guest-welcome-bg-thumb" alt="Welcome background" />
-                    <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
-                      Upload background
-                      <input type="file" id="guestWelcomeBackgroundUpload" accept="image/*" hidden />
-                    </label>
-                  </div>
-                  <p class="field-hint">Background fills the TV welcome screen behind the content. Use a wide landscape photo (1920×1080 or larger).</p>
-                  <label class="kids-theme-field">
-                    <span>Guest name (per stay — leave blank between guests)</span>
-                    <div class="guest-name-row">
-                      <input type="text" id="guestWelcomeGuestName" placeholder="e.g. Sarah" />
-                      <button type="button" class="btn btn-secondary btn-sm" id="btnGuestCheckIn" title="Check in guest and update TVs">Check in</button>
-                      <button type="button" class="btn btn-secondary btn-sm" id="btnGuestCheckOut" title="Clear guest name between stays">Check out</button>
-                    </div>
-                  </label>
-                  <div class="kids-theme-colors">
-                    <label class="kids-theme-field">
-                      <span>Check-in date</span>
-                      <input type="date" id="guestCheckInDate" />
-                    </label>
-                    <label class="kids-theme-field">
-                      <span>Check-out date</span>
-                      <input type="date" id="guestCheckOutDate" />
-                    </label>
-                  </div>
-                  <p class="field-hint">Stay dates drive the outdoor weather forecast and hiking / hot springs recommendations on the TV welcome screen.</p>
-                  <label class="kids-theme-field">
-                    <span>Welcome title</span>
-                    <input type="text" id="guestWelcomeTitle" placeholder="Welcome to Sample Property" />
-                  </label>
-                  <label class="kids-theme-field">
-                    <span>Subtitle</span>
-                    <input type="text" id="guestWelcomeSubtitle" placeholder="Connect to WiFi, then choose a streaming app" />
-                  </label>
-                </div>
-                <div class="guest-welcome-form-section">
-                  <div class="guest-welcome-form-heading">WiFi &amp; stay</div>
-                  <p class="field-hint">WiFi fields generate the QR code on TV. Usually saved as property defaults; checkout time can be set per guest at check-in.</p>
-                  <div class="kids-theme-colors">
-                    <label class="kids-theme-field">
-                      <span>WiFi network</span>
-                      <input type="text" id="guestWifiSsid" placeholder="Guest network name" />
-                    </label>
-                    <label class="kids-theme-field">
-                      <span>WiFi password</span>
-                      <input type="text" id="guestWifiPassword" placeholder="Password" />
-                    </label>
-                  </div>
-                  <label class="kids-theme-field">
-                    <span>Checkout time</span>
-                    <input type="text" id="guestCheckoutTime" placeholder="11:00 AM" />
-                  </label>
-                  <label class="kids-theme-field">
-                    <span>Digital guidebook URL (QR on TV)</span>
-                    <input type="url" id="guestGuidebookUrl" placeholder="https://your-guidebook-link.com" />
-                  </label>
-                </div>
-                <div class="guest-welcome-form-section">
-                  <div class="guest-welcome-form-heading">Property info</div>
-                  <p class="field-hint">Short lines shown in the “Property info” card on the welcome screen.</p>
-                  <label class="kids-theme-field">
-                    <span>Thermostat</span>
-                    <input type="text" id="guestThermostatInfo" placeholder="Set to 72°F — adjust with remote on wall" />
-                  </label>
-                  <div class="kids-theme-colors">
-                    <label class="kids-theme-field">
-                      <span>Parking</span>
-                      <input type="text" id="guestParkingInfo" placeholder="Driveway — max 2 cars" />
-                    </label>
-                    <label class="kids-theme-field">
-                      <span>Trash &amp; recycling</span>
-                      <input type="text" id="guestTrashInfo" placeholder="Bins by garage — pickup Tuesday" />
-                    </label>
-                  </div>
-                  <div class="kids-theme-colors">
-                    <label class="kids-theme-field">
-                      <span>Weather location name</span>
-                      <input type="text" id="guestWeatherLocation" placeholder="Sample Property" />
-                    </label>
-                    <label class="kids-theme-field">
-                      <span>Latitude</span>
-                      <input type="text" id="guestWeatherLat" placeholder="33.45" inputmode="decimal" />
-                    </label>
-                    <label class="kids-theme-field">
-                      <span>Longitude</span>
-                      <input type="text" id="guestWeatherLon" placeholder="-112.07" inputmode="decimal" />
-                    </label>
-                    <label class="kids-theme-field">
-                      <span>Tempest station ID</span>
-                      <input type="text" id="guestTempestStationId" placeholder="218440" inputmode="numeric" />
-                    </label>
-                  </div>
-                  <p class="field-hint">Live roof weather uses your Tempest station when an API token is set on the hub (<code>TEMPEST_API_TOKEN</code>). Lat/lon are the Open-Meteo fallback.</p>
-                </div>
-                <div class="guest-welcome-form-section">
-                  <div class="guest-welcome-form-heading">Guest content</div>
-                  <p class="field-hint">Rules, tips, and instructions appear in scrollable cards. Emergency info shows in the help section.</p>
-                  <label class="kids-theme-field">
-                    <span>House rules</span>
-                    <textarea id="guestHouseRules" rows="3" placeholder="Quiet hours, no smoking, etc."></textarea>
-                  </label>
-                  <label class="kids-theme-field">
-                    <span>Local tips</span>
-                    <textarea id="guestLocalTips" rows="3" placeholder="Favorite restaurants, hikes, coffee shops…"></textarea>
-                  </label>
-                  <label class="kids-theme-field">
-                    <span>TV instructions</span>
-                    <textarea id="guestTvInstructions" rows="2" placeholder="Press Home to return here. Select a streaming app and sign in."></textarea>
-                  </label>
-                  <div class="kids-theme-colors">
-                    <label class="kids-theme-field">
-                      <span>Emergency contact</span>
-                      <input type="text" id="guestEmergencyName" placeholder="Host name" />
-                    </label>
-                    <label class="kids-theme-field">
-                      <span>Emergency phone</span>
-                      <input type="text" id="guestEmergencyPhone" placeholder="Phone number" />
-                    </label>
-                  </div>
-                </div>
-                <div class="toolbar guest-welcome-actions" style="margin:0.25rem 0 0;">
-                  <button type="button" class="btn btn-primary btn-sm" id="btnGuestWelcomeSave" title="Save live welcome — TVs pick up changes on next load">Save welcome</button>
-                  <button type="button" class="btn btn-secondary btn-sm" id="btnGuestWelcomeSaveDefaults" title="Save as property template for future stays">Save property defaults</button>
-                  <button type="button" class="btn btn-secondary btn-sm" id="btnGuestWelcomeLoadDefaults" title="Fill form from saved defaults (keeps guest name)">Load defaults</button>
-                  <button type="button" class="btn btn-secondary btn-sm" id="btnGuestWelcomeReset" title="Clear per-stay overrides and guest name">Reset live to defaults</button>
-                  <button type="button" class="btn btn-secondary btn-sm" id="btnGuestWelcomeApply" title="Save and open welcome on the selected TV">Apply welcome to TV</button>
-                </div>
-                <div id="guestWelcomeMeta" class="guest-welcome-meta"></div>
-              </div>
-              <div class="guest-welcome-preview-wrap">
-                <div class="guest-welcome-preview-label">Welcome screen preview</div>
-                <div id="guestWelcomePreviewViewport" class="guest-welcome-preview-viewport">
-                  <iframe id="guestWelcomePreview" class="guest-welcome-preview" title="Welcome screen preview" loading="lazy"></iframe>
-                </div>
-              </div>
-            </div>
+            <p class="kids-theme-lead">Property-wide welcome content (branding, Wi‑Fi, rules, trails) lives in <strong>Setup → Property</strong>. Each property has its own ID and data — the preview link always uses the active property.</p>
+            <section class="setup-card" style="margin-top:0.75rem;">
+              <dl class="setup-dl">
+                <dt>Active property</dt>
+                <dd><span id="guestExperiencePropertyName">—</span> · ID <code id="guestExperiencePropertyId" class="setup-mono">—</code></dd>
+                <dt>Guest page</dt>
+                <dd>
+                  <a id="guestExperienceGuestPageLink" href="/guest/?hub_preview=1&amp;property_id=1" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">View guest page</a>
+                  <button type="button" class="btn btn-primary btn-sm" id="btnGuestExperienceOpenSetup">Edit in Setup → Property</button>
+                </dd>
+              </dl>
+            </section>
             <div id="guestExperienceStatus" class="guest-experience-status">Connect a TV to see guest launcher status.</div>
             <div class="guest-provision-checklist" id="guestProvisionChecklist">
               <div class="guest-provision-checklist-title">TV provisioning — two paths</div>
@@ -863,6 +1040,23 @@
           </div>
       </div>
     </main>
+  </div>
+
+  <!-- Add property -->
+  <div class="modal-overlay" id="addPropertyModal">
+    <div class="modal">
+      <h2>Add property</h2>
+      <p class="modal-hint">Link key can be any identifier — HA config entry name, slug, external ID, or label.</p>
+      <form id="addPropertyForm">
+        <div class="form-group"><label>Property name</label><input type="text" name="name" required placeholder="Forest Home" maxlength="120" /></div>
+        <div class="form-group"><label>Property link</label><input type="text" name="property_link" required placeholder="forest-home" maxlength="200" /></div>
+        <div class="form-group"><label>TV Google account (optional)</label><input type="email" name="guest_google_account" placeholder="guest@example.com" /></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="btnCancelAddProperty">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create property</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- App room slot (Path 1) -->
@@ -967,6 +1161,6 @@
     </div>
   </aside>
 
-  <script src="/js/app.js?v=27"></script>
+  <script src="/js/app.js?v=34"></script>
 </body>
 </html>

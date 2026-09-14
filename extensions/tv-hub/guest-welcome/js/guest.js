@@ -100,6 +100,7 @@ function setWeatherCardIcon(code) {
 }
 
 function hubBase() {
+  if (window.AatomClaimStore?.getHubBase) return window.AatomClaimStore.getHubBase();
   if (window.HUB_BASE_URL) return String(window.HUB_BASE_URL).replace(/\/$/, "");
   const host = window.location.hostname;
   if (host && host !== "localhost" && host !== "127.0.0.1") {
@@ -175,6 +176,49 @@ function updateClock() {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function renderActivityRecommendations(forecast) {
+  const hikingRec = document.getElementById("hikingRec");
+  const secondaryRec = document.getElementById("hotSpringsRec");
+  if (!hikingRec || !secondaryRec || !forecast) return;
+
+  const activities = Array.isArray(forecast.activities) && forecast.activities.length
+    ? forecast.activities
+    : [
+        forecast.hiking ? { id: "hiking", label: "Best for hiking", ...forecast.hiking } : null,
+        forecast.secondary_activity?.best_days?.length
+          ? forecast.secondary_activity
+          : (forecast.hot_springs?.best_days?.length
+            ? { id: "hot_springs", label: "Best for hot springs", ...forecast.hot_springs }
+            : null),
+      ].filter(Boolean);
+
+  const hiking = activities.find(a => a.id === "hiking") || forecast.hiking;
+  const secondary = activities.find(a => a.id !== "hiking") || forecast.secondary_activity || forecast.hot_springs;
+
+  const renderRec = (el, activity, fallbackLabel) => {
+    if (!el || !activity) {
+      if (el) el.hidden = true;
+      return;
+    }
+    const top = (activity.best_days || [])[0];
+    const detail = top ? `${top.day_name}: ${top.reason}` : "";
+    const label = activity.label || fallbackLabel;
+    el.hidden = false;
+    el.innerHTML = `
+      <span class="activity-rec-label">${esc(label)}</span>
+      ${esc(activity.summary || "")}
+      ${detail ? `<span class="activity-rec-detail">${esc(detail)}</span>` : ""}`;
+  };
+
+  renderRec(hikingRec, hiking, "Best for hiking");
+  if (secondary?.best_days?.length || secondary?.summary) {
+    renderRec(secondaryRec, secondary, "Outdoor activities");
+  } else {
+    secondaryRec.hidden = true;
+    secondaryRec.innerHTML = "";
+  }
 }
 
 function hostTipsPreview(tips) {
@@ -404,7 +448,7 @@ function renderTrailMapHtml(trail) {
   const home = propertyLocation();
   const origin = encodeURIComponent(home.address);
   const destination = trail.trailhead
-    ? encodeURIComponent(`${trail.trailhead}, Desert Hot Springs, CA`)
+    ? encodeURIComponent(`${trail.trailhead}, ${home.address}`)
     : encodeURIComponent(`${trail.lat},${trail.lon}`);
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
   return `
@@ -814,11 +858,27 @@ function isAppInstalledForApp(app) {
   return false;
 }
 
-function renderStreamingApps(apps) {
+function dashboardModeFrom(config) {
+  const c = config || guestConfig || {};
+  return c.dashboard_mode || c.room_config?.dashboard_mode || "cdo_str";
+}
+
+function isStrDashboard(config) {
+  return dashboardModeFrom(config) !== "ha_dashboard";
+}
+
+function renderStreamingApps(apps, config) {
   streamingAppsState = apps || [];
   const section = document.getElementById("streamingSection");
   const grid = document.getElementById("streamingGrid");
   if (!section || !grid) return;
+
+  // STR welcome screen — apps open via Google TV launcher, not the bottom row.
+  if (isStrDashboard(config)) {
+    section.hidden = true;
+    grid.innerHTML = "";
+    return;
+  }
 
   if (!streamingAppsState.length) {
     section.hidden = true;
@@ -1239,7 +1299,10 @@ function renderWeather(config) {
 
   const forecast = weather.forecast;
   const hikingDates = new Set((forecast.hiking?.best_days || []).map(d => d.date));
-  const springsDates = new Set((forecast.hot_springs?.best_days || []).map(d => d.date));
+  const secondaryDays = forecast.secondary_activity?.best_days?.length
+    ? forecast.secondary_activity.best_days
+    : (forecast.hot_springs?.best_days || []);
+  const springsDates = new Set(secondaryDays.map(d => d.date));
 
   if (weatherCardTitle) {
     weatherCardTitle.textContent = isLive ? "On-site weather" : "Outdoor weather";
@@ -1310,25 +1373,7 @@ function renderWeather(config) {
     renderHourlyPanel(null);
   }
 
-  const hikingRec = document.getElementById("hikingRec");
-  if (hikingRec && forecast.hiking) {
-    const top = (forecast.hiking.best_days || [])[0];
-    const detail = top ? `${top.day_name}: ${top.reason}` : "";
-    hikingRec.innerHTML = `
-      <span class="activity-rec-label">Best for hiking</span>
-      ${esc(forecast.hiking.summary || "")}
-      ${detail ? `<span class="activity-rec-detail">${esc(detail)}</span>` : ""}`;
-  }
-
-  const springsRec = document.getElementById("hotSpringsRec");
-  if (springsRec && forecast.hot_springs) {
-    const top = (forecast.hot_springs.best_days || [])[0];
-    const detail = top ? `${top.day_name}: ${top.reason}` : "";
-    springsRec.innerHTML = `
-      <span class="activity-rec-label">Best for hot springs</span>
-      ${esc(forecast.hot_springs.summary || "")}
-      ${detail ? `<span class="activity-rec-detail">${esc(detail)}</span>` : ""}`;
-  }
+  renderActivityRecommendations(forecast);
 
   weatherCard.hidden = false;
   weatherCard.classList.add("focusable");
@@ -1391,6 +1436,7 @@ function collectFocusables() {
     ...document.querySelectorAll(".cards-row .focusable:not([hidden])"),
     ...document.querySelectorAll("#forecastStrip .forecast-day"),
     ...document.querySelectorAll("#infoStack .focusable"),
+    ...document.querySelectorAll("#roomControlsGrid .room-control-tile"),
     ...document.querySelectorAll(".streaming-grid .streaming-tile"),
   ];
   focusables = nodes.filter(el => el.offsetParent !== null && !el.hidden);
@@ -1523,6 +1569,10 @@ function activateFocused() {
     selectForecastDay(current.dataset.date);
     return;
   }
+  if (current.classList.contains("room-control-tile") && current.dataset.entityId) {
+    toggleRoomControl(current);
+    return;
+  }
   if (current.classList.contains("streaming-tile") && current.dataset.package) {
     openStreamingApp(current.dataset.package);
     return;
@@ -1541,9 +1591,167 @@ function publicConfigPath() {
 }
 
 async function fetchPublicConfig() {
+  if (window.AatomGuestApi && window.AatomClaimStore?.isClaimed(hubBase())) {
+    return window.AatomGuestApi.fetchJson(publicConfigPath());
+  }
   const res = await fetch(apiUrl(publicConfigPath()), { cache: "no-store" });
   if (!res.ok) throw new Error(res.statusText || "Failed to load welcome config");
   return res.json();
+}
+
+async function fetchRoomScreen() {
+  if (!window.AatomGuestApi || !window.AatomClaimStore?.isClaimed(hubBase())) return null;
+  try {
+    return await window.AatomGuestApi.fetchJson("/api/guest-welcome/room");
+  } catch (_) {
+    return null;
+  }
+}
+
+function formatControlState(state) {
+  const s = (state || "unknown").toLowerCase();
+  if (s === "on") return "On";
+  if (s === "off") return "Off";
+  if (s === "open") return "Open";
+  if (s === "closed") return "Closed";
+  return s;
+}
+
+let haDashboardFullscreen = false;
+
+function applyDashboardMode(config) {
+  const mode = dashboardModeFrom(config);
+  const isHa = mode === "ha_dashboard";
+  document.body.classList.toggle("guest-mode--ha", isHa);
+  document.body.classList.toggle("guest-mode--str", !isHa);
+  const streamingSection = document.getElementById("streamingSection");
+  if (streamingSection && !isHa) streamingSection.hidden = true;
+  const infoStack = document.getElementById("infoStack");
+  const infoSection = infoStack?.closest("section");
+  if (infoSection) infoSection.hidden = isHa;
+  const btnHa = document.getElementById("btnHaDashboard");
+  if (btnHa) btnHa.hidden = !isHa;
+}
+
+function setHaDashboardFullscreen(on) {
+  haDashboardFullscreen = Boolean(on);
+  document.body.classList.toggle("ha-dashboard-fullscreen", haDashboardFullscreen);
+  const btn = document.getElementById("btnHaDashboard");
+  if (btn) btn.textContent = haDashboardFullscreen ? "← Welcome" : "Home panel";
+  collectFocusables();
+}
+
+function applyHaDashboardEmbed(config) {
+  const section = document.getElementById("haDashboardSection");
+  const frame = document.getElementById("haDashboardFrame");
+  const status = document.getElementById("haDashboardStatus");
+  const title = document.getElementById("haDashboardTitle");
+  if (!section || !frame) return;
+
+  const mode = config.dashboard_mode || config.room_config?.dashboard_mode || "cdo_str";
+  const isHa = mode === "ha_dashboard";
+  const iframeSrc = config.ha_dashboard_iframe_src || "";
+  const directSrc = config.ha_dashboard_direct_src || "";
+  const configured = config.ha_dashboard_configured !== false;
+
+  if (!isHa) {
+    section.hidden = true;
+    frame.removeAttribute("src");
+    if (status) status.textContent = "";
+    return;
+  }
+
+  if (title && config.room_name) {
+    title.textContent = `${config.room_name} · Home Assistant`;
+  }
+
+  if (!iframeSrc && !directSrc) {
+    section.hidden = true;
+    if (status) {
+      status.textContent = config.ha_dashboard_error
+        || "Set a dashboard URL in hub Setup → Rooms, and connect Home Assistant in Setup → Integration.";
+    }
+    return;
+  }
+
+  const src = iframeSrc || directSrc;
+  section.hidden = false;
+  if (frame.dataset.loadedSrc !== src) {
+    frame.dataset.loadedSrc = src;
+    frame.src = src;
+    if (status) status.textContent = "Loading dashboard…";
+    frame.onload = () => {
+      if (status) status.textContent = "";
+      collectFocusables();
+    };
+    frame.onerror = () => {
+      if (status) status.textContent = "Could not load dashboard — try Home panel for full screen.";
+    };
+  }
+}
+
+function openHaDashboardFullscreen() {
+  const config = guestConfig || {};
+  const src = config.ha_dashboard_direct_src || config.ha_dashboard_iframe_src;
+  if (!src) return;
+  if (haDashboardFullscreen) {
+    setHaDashboardFullscreen(false);
+    scrollWelcomeToTop();
+    return;
+  }
+  if (config.ha_dashboard_direct_src) {
+    window.location.href = config.ha_dashboard_direct_src;
+    return;
+  }
+  setHaDashboardFullscreen(true);
+  document.getElementById("haDashboardSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderRoomControls(controls) {
+  const section = document.getElementById("roomSection");
+  const grid = document.getElementById("roomControlsGrid");
+  if (!section || !grid) return;
+
+  const items = (controls || []).filter(c => c.entity_id);
+  if (!items.length) {
+    section.hidden = true;
+    grid.innerHTML = "";
+    return;
+  }
+
+  section.hidden = false;
+  grid.innerHTML = items.map(ctrl => {
+    const on = ["on", "open"].includes((ctrl.state || "").toLowerCase());
+    return `<button type="button" class="room-control-tile focusable${on ? " room-control-tile--on" : ""}"
+      data-entity-id="${esc(ctrl.entity_id)}" tabindex="0">
+      <span class="room-control-label">${esc(ctrl.label || ctrl.entity_id)}</span>
+      <span class="room-control-state">${esc(formatControlState(ctrl.state))}</span>
+    </button>`;
+  }).join("");
+
+  grid.querySelectorAll(".room-control-tile").forEach(btn => {
+    btn.addEventListener("click", () => toggleRoomControl(btn));
+  });
+}
+
+async function toggleRoomControl(btn) {
+  const entityId = btn?.dataset?.entityId;
+  if (!entityId || !window.AatomGuestApi) return;
+  const status = document.getElementById("roomControlsStatus");
+  if (status) status.textContent = "Updating…";
+  try {
+    const result = await window.AatomGuestApi.postJson("/api/guest-welcome/room-control", {
+      entity_id: entityId,
+      action: "toggle",
+    });
+    const stateEl = btn.querySelector(".room-control-state");
+    if (stateEl) stateEl.textContent = formatControlState(result.state);
+    const on = ["on", "open"].includes((result.state || "").toLowerCase());
+    btn.classList.toggle("room-control-tile--on", on);
+    if (status) status.textContent = "";
+  } catch (err) {
+    if (status) status.textContent = err.message || "Could not update control";
+  }
 }
 
 function bindUiEvents() {
@@ -1552,6 +1760,7 @@ function bindUiEvents() {
   document.getElementById("btnGoogleTv")?.addEventListener("click", openGoogleTv);
   document.getElementById("btnScrollTop")?.addEventListener("click", scrollWelcomeToTop);
   document.getElementById("btnClearLogins")?.addEventListener("click", openClearLoginsConfirm);
+  document.getElementById("btnHaDashboard")?.addEventListener("click", openHaDashboardFullscreen);
 }
 
 function applyConfig(config) {
@@ -1591,14 +1800,23 @@ function applyConfig(config) {
   const eyebrow = document.getElementById("heroEyebrow");
 
   titleEl.textContent = config.title || "Welcome";
-  if (guestName) {
+  if (config.hero_eyebrow && eyebrow) {
+    eyebrow.textContent = config.hero_eyebrow;
+  } else if (guestName) {
     if (eyebrow) {
       eyebrow.textContent = config.property_title || config.property_name || "Your stay at";
     }
+  } else if (config.room_name && eyebrow) {
+    eyebrow.textContent = `Your stay in ${config.room_name}`;
   } else if (eyebrow) {
     eyebrow.textContent = config.property_name
       ? `Welcome to ${config.property_name}`
       : "We're glad you're here";
+  }
+
+  const roomTitle = document.getElementById("roomSectionTitle");
+  if (roomTitle && config.room_name) {
+    roomTitle.textContent = `${config.room_name} controls`;
   }
 
   document.title = config.property_name
@@ -1608,11 +1826,21 @@ function applyConfig(config) {
   const subtitle = document.getElementById("subtitle");
   if (subtitle) subtitle.textContent = config.subtitle || "";
 
+  applyDashboardMode(config);
+  applyHaDashboardEmbed(config);
   renderStayDates(config);
   renderHeroQr(config);
   renderWeather(config);
-  renderInfoCards(config);
-  renderStreamingApps(config.streaming_apps || []);
+  if ((config.dashboard_mode || "cdo_str") !== "ha_dashboard") {
+    renderInfoCards(config);
+  } else {
+    const infoStack = document.getElementById("infoStack");
+    if (infoStack) infoStack.innerHTML = "";
+  }
+  renderStreamingApps(config.streaming_apps || [], config);
+  if (config.room_controls) {
+    renderRoomControls(config.room_controls);
+  }
 
   const wifiSsid = document.getElementById("wifiSsid");
   const wifiPasswordRow = document.getElementById("wifiPasswordRow");
@@ -1646,6 +1874,17 @@ async function loadConfig(options = {}) {
 
   try {
     const config = await fetchPublicConfig();
+    const room = await fetchRoomScreen();
+    if (room) {
+      if (room.room_name) config.room_name = room.room_name;
+      if (room.room_config?.dashboard_mode) config.dashboard_mode = room.room_config.dashboard_mode;
+      if (room.room_config?.ha_dashboard_url) config.ha_dashboard_url = room.room_config.ha_dashboard_url;
+      if (room.ha_dashboard_iframe_src) config.ha_dashboard_iframe_src = room.ha_dashboard_iframe_src;
+      if (room.ha_dashboard_direct_src) config.ha_dashboard_direct_src = room.ha_dashboard_direct_src;
+      if (room.ha_dashboard_configured != null) config.ha_dashboard_configured = room.ha_dashboard_configured;
+      if (room.ha_dashboard_error) config.ha_dashboard_error = room.ha_dashboard_error;
+      if (room.controls?.length) config.room_controls = room.controls;
+    }
     saveConfigCache(config);
     applyConfig(config);
     warmStaticAssets(config);
@@ -1776,13 +2015,19 @@ async function bootGuestWelcome() {
   if (!HUB_PREVIEW) {
     try {
       await loadScriptOnce("/guest/js/claim-store.js");
+      await loadScriptOnce("/guest/js/guest-api.js");
       await loadScriptOnce("/guest/js/tv-agent-poll.js");
       const hub = hubBase();
-      if (window.AatomClaimStore && !window.AatomClaimStore.isClaimed(hub)) {
-        window.location.replace(`${hub}/guest/onboard/`);
+      let claim = window.AatomClaimStore?.loadClaim(hub);
+      const onboard = window.ONBOARD_PAGE_URL || `${hub}/guest/onboard/`;
+      if (!window.AatomClaimStore?.isClaimed(hub) || !claim?.device_session) {
+        const synced = await window.AatomClaimStore?.syncSessionFromHub?.(hub);
+        claim = synced || window.AatomClaimStore?.loadClaim(hub);
+      }
+      if (!window.AatomClaimStore?.isClaimed(hub) || !claim?.device_session) {
+        window.location.replace(onboard);
         return;
       }
-      const claim = window.AatomClaimStore?.loadClaim(hub);
       if (claim?.device_id && window.AatomTvAgent) {
         window.AatomTvAgent.startTvAgentPoll(claim.device_id, window.AatomClaimStore.getFingerprint());
       }
@@ -1811,7 +2056,16 @@ async function checkForHubUpdates() {
     contentRevision = rev || contentRevision;
     guestConfig = config;
     renderWeather(config);
-    renderStreamingApps(config.streaming_apps || []);
+    renderStreamingApps(config.streaming_apps || [], config);
+    const room = await fetchRoomScreen();
+    if (room?.room_config?.dashboard_mode) config.dashboard_mode = room.room_config.dashboard_mode;
+    if (room?.ha_dashboard_iframe_src) config.ha_dashboard_iframe_src = room.ha_dashboard_iframe_src;
+    if (room?.controls?.length) {
+      config.room_controls = room.controls;
+      renderRoomControls(room.controls);
+    }
+    applyDashboardMode(config);
+    applyHaDashboardEmbed(config);
     collectFocusables();
   } catch (_) { /* hub unreachable — cached screen stays visible */ }
 }

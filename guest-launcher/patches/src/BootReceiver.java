@@ -20,7 +20,7 @@ public class BootReceiver extends BroadcastReceiver {
             return;
         }
         Intent launch = new Intent(context, MainActivity.class);
-        launch.putExtra("hub_url", "http://192.168.2.1:8080/guest/");
+        launch.putExtra("hub_url", "http://172.16.1.36:18080/guest/onboard/");
         launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         context.startActivity(launch);
     }

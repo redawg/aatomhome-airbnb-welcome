@@ -6,46 +6,68 @@
 # instance fields
 .field private final context:Landroid/content/Context;
 
+.field private final hubConfig:Lcom/aatomhome/guestwelcome/HubConfig;
+
 
 # direct methods
-.method public constructor <init>(Landroid/content/Context;)V
-    .locals 1
+.method public constructor <init>(Landroid/content/Context;Lcom/aatomhome/guestwelcome/HubConfig;)V
+    .locals 0
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
 
     iput-object p1, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
 
+    iput-object p2, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->hubConfig:Lcom/aatomhome/guestwelcome/HubConfig;
+
     return-void
+.end method
+
+.method private deviceFingerprintValue()Ljava/lang/String;
+    .locals 2
+
+    iget-object v0, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
+
+    invoke-virtual {v0}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
+
+    move-result-object v0
+
+    const-string v1, "android_id"
+
+    invoke-static {v0, v1}, Landroid/provider/Settings$Secure;->getString(Landroid/content/ContentResolver;Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v0
+
+    if-eqz v0, :cond_0
+
+    invoke-virtual {v0}, Ljava/lang/String;->length()I
+
+    move-result v1
+
+    if-lez v1, :cond_0
+
+    return-object v0
+
+    :cond_0
+    sget-object v0, Landroid/os/Build;->MODEL:Ljava/lang/String;
+
+    return-object v0
 .end method
 
 
 # virtual methods
-.method public final isAppInstalled(Ljava/lang/String;)Z
-    .locals 2
+.method public clearClaimState()V
+    .locals 1
     .annotation runtime Landroid/webkit/JavascriptInterface;
     .end annotation
 
-    :try_start_0
-    iget-object v0, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
+    iget-object v0, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->hubConfig:Lcom/aatomhome/guestwelcome/HubConfig;
 
-    invoke-virtual {v0}, Landroid/content/Context;->getPackageManager()Landroid/content/pm/PackageManager;
+    if-eqz v0, :cond_0
 
-    move-result-object v0
+    invoke-virtual {v0}, Lcom/aatomhome/guestwelcome/HubConfig;->clearClaimRecord()V
 
-    const/4 v1, 0x0
-
-    invoke-virtual {v0, p1, v1}, Landroid/content/pm/PackageManager;->getPackageInfo(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;
-    :try_end_0
-    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
-
-    const/4 v0, 0x1
-
-    return v0
-
-    :catch_0
-    const/4 v0, 0x0
-
-    return v0
+    :cond_0
+    return-void
 .end method
 
 .method public closeToGoogleTv()V
@@ -116,6 +138,146 @@
     return-void
 .end method
 
+.method public getClaimState()Ljava/lang/String;
+    .locals 4
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    iget-object v0, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->hubConfig:Lcom/aatomhome/guestwelcome/HubConfig;
+
+    if-nez v0, :cond_0
+
+    const-string v0, "{}"
+
+    return-object v0
+
+    :cond_0
+    new-instance v1, Lorg/json/JSONObject;
+
+    invoke-direct {v1}, Lorg/json/JSONObject;-><init>()V
+
+    :try_start_0
+    const-string v2, "hub_url"
+
+    invoke-virtual {v0}, Lcom/aatomhome/guestwelcome/HubConfig;->hubBaseUrl()Ljava/lang/String;
+
+    move-result-object v3
+
+    invoke-virtual {v1, v2, v3}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
+
+    const-string v2, "device_id"
+
+    invoke-virtual {v0}, Lcom/aatomhome/guestwelcome/HubConfig;->deviceId()I
+
+    move-result v3
+
+    invoke-virtual {v1, v2, v3}, Lorg/json/JSONObject;->put(Ljava/lang/String;I)Lorg/json/JSONObject;
+
+    invoke-virtual {v0}, Lcom/aatomhome/guestwelcome/HubConfig;->deviceSession()Ljava/lang/String;
+
+    move-result-object v2
+
+    if-eqz v2, :cond_1
+
+    const-string v3, "device_session"
+
+    invoke-virtual {v1, v3, v2}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
+
+    :cond_1
+    invoke-virtual {v0}, Lcom/aatomhome/guestwelcome/HubConfig;->deviceFingerprint()Ljava/lang/String;
+
+    move-result-object v2
+
+    if-eqz v2, :cond_2
+
+    const-string v3, "device_fingerprint"
+
+    invoke-virtual {v1, v3, v2}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
+
+    :cond_2
+    const-string v2, "claimed"
+
+    invoke-virtual {v0}, Lcom/aatomhome/guestwelcome/HubConfig;->hasPersistedClaim()Z
+
+    move-result v0
+
+    invoke-virtual {v1, v2, v0}, Lorg/json/JSONObject;->put(Ljava/lang/String;Z)Lorg/json/JSONObject;
+    :try_end_0
+    .catch Lorg/json/JSONException; {:try_start_0 .. :try_end_0} :catch_0
+
+    invoke-virtual {v1}, Lorg/json/JSONObject;->toString()Ljava/lang/String;
+
+    move-result-object v0
+
+    return-object v0
+
+    :catch_0
+    const-string v0, "{}"
+
+    return-object v0
+.end method
+
+.method public getDeviceFingerprint()Ljava/lang/String;
+    .locals 1
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0}, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->deviceFingerprintValue()Ljava/lang/String;
+
+    move-result-object v0
+
+    return-object v0
+.end method
+
+.method public getHubUrl()Ljava/lang/String;
+    .locals 1
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    iget-object v0, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->hubConfig:Lcom/aatomhome/guestwelcome/HubConfig;
+
+    if-eqz v0, :cond_0
+
+    invoke-virtual {v0}, Lcom/aatomhome/guestwelcome/HubConfig;->hubBaseUrl()Ljava/lang/String;
+
+    move-result-object v0
+
+    return-object v0
+
+    :cond_0
+    const-string v0, "http://172.16.1.36:18080"
+
+    return-object v0
+.end method
+
+.method public final isAppInstalled(Ljava/lang/String;)Z
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    :try_start_0
+    iget-object v0, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
+
+    invoke-virtual {v0}, Landroid/content/Context;->getPackageManager()Landroid/content/pm/PackageManager;
+
+    move-result-object v0
+
+    const/4 v1, 0x0
+
+    invoke-virtual {v0, p1, v1}, Landroid/content/pm/PackageManager;->getPackageInfo(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;
+    :try_end_0
+    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
+
+    const/4 v0, 0x1
+
+    return v0
+
+    :catch_0
+    const/4 v0, 0x0
+
+    return v0
+.end method
+
 .method public final launchApp(Ljava/lang/String;)V
     .locals 4
     .annotation runtime Landroid/webkit/JavascriptInterface;
@@ -183,5 +345,114 @@
 
     invoke-virtual {p0}, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->closeToGoogleTv()V
 
+    return-void
+.end method
+
+.method public startTvAgent()V
+    .locals 3
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    :try_start_0
+    iget-object v0, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->context:Landroid/content/Context;
+
+    new-instance v1, Landroid/content/Intent;
+
+    const-class v2, Lcom/aatomhome/guestwelcome/TvAgentService;
+
+    invoke-direct {v1, v0, v2}, Landroid/content/Intent;-><init>(Landroid/content/Context;Ljava/lang/Class;)V
+
+    invoke-virtual {v0, v1}, Landroid/content/Context;->startService(Landroid/content/Intent;)Landroid/content/ComponentName;
+    :try_end_0
+    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
+
+    :catch_0
+    return-void
+.end method
+
+.method public saveClaimState(Ljava/lang/String;)V
+    .locals 7
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    iget-object v0, p0, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->hubConfig:Lcom/aatomhome/guestwelcome/HubConfig;
+
+    if-eqz v0, :cond_2
+
+    if-nez p1, :cond_0
+
+    goto :goto_0
+
+    :cond_0
+    :try_start_0
+    new-instance v1, Lorg/json/JSONObject;
+
+    invoke-direct {v1, p1}, Lorg/json/JSONObject;-><init>(Ljava/lang/String;)V
+
+    const-string p1, "device_id"
+
+    const/4 v2, -0x1
+
+    invoke-virtual {v1, p1, v2}, Lorg/json/JSONObject;->optInt(Ljava/lang/String;I)I
+
+    move-result v2
+
+    if-gtz v2, :cond_1
+
+    return-void
+
+    :cond_1
+    const-string p1, "device_session"
+
+    const-string v3, ""
+
+    invoke-virtual {v1, p1, v3}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v3
+
+    invoke-virtual {v3}, Ljava/lang/String;->trim()Ljava/lang/String;
+
+    move-result-object v3
+
+    invoke-virtual {v3}, Ljava/lang/String;->length()I
+
+    move-result p1
+
+    if-nez p1, :cond_3
+
+    return-void
+
+    :cond_3
+    invoke-direct {p0}, Lcom/aatomhome/guestwelcome/GuestLauncherBridge;->deviceFingerprintValue()Ljava/lang/String;
+
+    move-result-object v4
+
+    const-string p1, "hub_url"
+
+    invoke-virtual {v0}, Lcom/aatomhome/guestwelcome/HubConfig;->hubBaseUrl()Ljava/lang/String;
+
+    move-result-object v5
+
+    invoke-virtual {v1, p1, v5}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v5
+
+    const-string p1, "claim_code"
+
+    const/4 v6, 0x0
+
+    invoke-virtual {v1, p1, v6}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v6
+
+    move-object v1, v0
+
+    invoke-virtual/range {v1 .. v6}, Lcom/aatomhome/guestwelcome/HubConfig;->saveClaimRecord(ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+    :try_end_0
+    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
+
+    :catch_0
+    :cond_2
+    :goto_0
     return-void
 .end method

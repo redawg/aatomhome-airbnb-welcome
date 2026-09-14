@@ -31,7 +31,7 @@ _result_queues: dict[int, asyncio.Queue[dict[str, Any]]] = {}
 
 
 def hub_public_url() -> str:
-    return os.environ.get("HUB_PUBLIC_URL", "http://127.0.0.1:8080").rstrip("/")
+    return os.environ.get("HUB_PUBLIC_URL", "http://127.0.0.1:18080").rstrip("/")
 
 
 async def _command_queue(device_id: int) -> asyncio.Queue[dict[str, Any]]:
@@ -113,9 +113,31 @@ async def send_command(
         return {"ok": False, "error": "agent_timeout"}
 
 
+async def queue_command(
+    device_id: int,
+    command: str,
+    payload: dict[str, Any] | None = None,
+) -> None:
+    """Enqueue a command without waiting for the TV to finish (wizard flows)."""
+    message = {"type": "command", "command": command, "payload": payload or {}}
+    async with _lock:
+        session = _sessions.get(device_id)
+    if session is not None:
+        await session.websocket.send_text(json.dumps(message))
+        return
+    cmd_q = await _command_queue(device_id)
+    await cmd_q.put(message)
+
+
 async def dispatch_clear_streaming(device_id: int) -> dict[str, Any]:
     logger.debug("dispatch_clear_streaming device_id=%s", device_id)
     return await send_command(device_id, "clear_streaming_logins")
+
+
+async def dispatch_enable_adb(device_id: int) -> dict[str, Any]:
+    logger.info("dispatch_enable_adb device_id=%s", device_id)
+    await queue_command(device_id, "enable_adb")
+    return {"ok": True, "queued": True}
 
 
 async def poll_agent_command(device_id: int, timeout: float = 20.0) -> dict[str, Any] | None:

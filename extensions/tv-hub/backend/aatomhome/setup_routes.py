@@ -2,18 +2,24 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
+import re
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+import adb
 import database as db
+import guest_welcome
 from . import store
-from guest_account_resolve import guest_account_from_config
+from guest_account_resolve import guest_account_from_config, property_link_from_config
 
+from . import ha_bridge
 from .setup_store import get_ha_config, get_setting, save_ha_config, set_setting
 from .launcher_routes import _apk_info, hub_onboarding_url
 from .tv_agent_ws import hub_public_url
@@ -68,13 +74,16 @@ async def _test_ha(url: str, token: str) -> dict[str, Any]:
 
 async def _tv_summary() -> dict[str, Any]:
     devices = await db.list_devices()
-    online = sum(1 for d in devices if d.get("connection_state") == "device")
+    live = {row["serial"]: row for row in await adb.list_devices()}
     pending = await store.list_pending_devices()
     claimed = 0
     app_slots = 0
     enriched = []
+    online = 0
     for d in devices:
         meta = await store.get_meta(d["id"])
+        if not meta.get("claim_code"):
+            meta = await store.ensure_meta_for_device(d["id"])
         reg_status = meta.get("registration_status", "active")
         if reg_status == "claimed":
             claimed += 1
@@ -82,16 +91,33 @@ async def _tv_summary() -> dict[str, Any]:
         is_app_slot = host in ("0.0.0.0", "pending", "")
         if is_app_slot and reg_status != "claimed":
             app_slots += 1
+        live_info, _ = adb.match_live_device(d.get("host") or "", d.get("port") or 5555, live)
+        connection_state = live_info.get("state", "offline")
+        status = await store.room_api_status(d["id"], connection_state)
+        if status.get("adb_online"):
+            online += 1
+        room_cfg = store.parse_room_config(meta)
+        room_name = (room_cfg.get("room_name") or "").strip()
+        controls = room_cfg.get("controls") or []
         enriched.append(
             {
                 "id": d["id"],
                 "name": d.get("name"),
+                "room_name": room_name,
                 "host": d.get("host"),
                 "port": d.get("port"),
-                "connection_state": d.get("connection_state") or "offline",
+                "connection_state": connection_state,
                 "registration_status": reg_status,
                 "provision_mode": "app" if is_app_slot else "adb",
                 "claim_code": meta.get("claim_code"),
+                "dashboard_mode": status["dashboard_mode"],
+                "dashboard_type": status["dashboard_type"],
+                "agent_connected": status["agent_connected"],
+                "adb_online": status["adb_online"],
+                "tv_local_ip": status.get("tv_local_ip") or "",
+                "adb_setup_status": status.get("adb_setup_status") or "",
+                "adb_setup_message": status.get("adb_setup_message") or "",
+                "controls_count": len(controls),
             }
         )
     return {
@@ -184,6 +210,39 @@ async def _active_property_id() -> int:
         return 1
 
 
+def _slugify_property_link(link: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", (link or "").strip().lower()).strip("-")
+    return slug or "property"
+
+
+def _tempest_token_status(config: dict | None) -> dict[str, Any]:
+    defaults = guest_welcome.get_welcome_defaults(config)
+    token = (defaults.get("tempest_api_token") or "").strip()
+    env_token = (os.environ.get("TEMPEST_API_TOKEN") or "").strip()
+    active = token or env_token
+    return {
+        "tempest_api_token_configured": bool(active),
+        "tempest_api_token_preview": _token_preview(active) if active else "",
+        "tempest_token_source": "property" if token else ("env" if env_token else ""),
+    }
+
+
+def _property_location_fields(config: dict | None) -> dict[str, Any]:
+    defaults = guest_welcome.get_welcome_defaults(config)
+    lat = defaults.get("weather_lat")
+    lon = defaults.get("weather_lon")
+    station = defaults.get("tempest_station_id")
+    return {
+        "property_address": (defaults.get("property_address") or "").strip(),
+        "weather_location_name": (defaults.get("weather_location_name") or "").strip(),
+        "weather_lat": lat,
+        "weather_lon": lon,
+        "weather_coords_manual": bool(defaults.get("weather_coords_manual")),
+        "tempest_station_id": station,
+        **_tempest_token_status(config),
+    }
+
+
 async def _property_summaries() -> list[dict[str, Any]]:
     rows = []
     for prop in await db.list_properties():
@@ -193,7 +252,9 @@ async def _property_summaries() -> list[dict[str, Any]]:
             "id": prop["id"],
             "name": prop.get("name") or f"Property {prop['id']}",
             "slug": prop.get("slug"),
+            "property_link": property_link_from_config(config),
             "guest_google_account": guest_email,
+            **_property_location_fields(config),
         })
     return rows
 
@@ -208,7 +269,7 @@ def _checklist(
     items: list[dict[str, Any]] = [
         {
             "id": "hub",
-            "label": "TV hub is running",
+            "label": "Aatom Guest Welcome hub is running",
             "status": "ok",
             "detail": hub_url,
             "path": "both",
@@ -322,6 +383,7 @@ async def get_setup_status() -> dict[str, Any]:
         "hub": {
             "public_url": hub_url,
             "guest_url": f"{hub_url}/guest/",
+            "onboard_url": f"{hub_url}/guest/onboard/",
             "admin_url": hub_url,
             "property_name": property_name,
             "active_property_id": active_property_id,
@@ -368,6 +430,21 @@ def _token_preview(token: str) -> str:
     return f"••••{token[-4:]}"
 
 
+@router.get("/api/aatomhome/setup/homeassistant/entities")
+async def list_ha_control_entities() -> dict[str, Any]:
+    """Controllable HA entities for per-room assignment in Setup."""
+    ha_cfg = await get_ha_config()
+    if not ha_cfg["ha_url"] or not ha_cfg["ha_token"]:
+        raise HTTPException(400, "Home Assistant is not configured — add URL and token in Setup → Integration")
+    try:
+        entities = await ha_bridge.list_guest_control_entities()
+    except ValueError as exc:
+        raise HTTPException(503, str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(502, str(exc))
+    return {"entities": entities, "count": len(entities)}
+
+
 @router.put("/api/aatomhome/setup/homeassistant")
 async def put_ha_config(body: HaConfigBody) -> dict[str, Any]:
     saved = await save_ha_config(ha_url=body.ha_url)
@@ -408,7 +485,34 @@ class ActivePropertyBody(BaseModel):
 
 
 class GuestGoogleAccountBody(BaseModel):
-    guest_google_account: str = Field(..., min_length=3, max_length=200)
+    guest_google_account: str = Field(default="", max_length=200)
+
+
+class PropertyLinkBody(BaseModel):
+    property_link: str = Field(..., min_length=1, max_length=200)
+
+
+class PropertyLocationBody(BaseModel):
+    property_address: str | None = Field(default=None, max_length=240)
+    weather_location_name: str | None = Field(default=None, max_length=120)
+    weather_lat: float | None = None
+    weather_lon: float | None = None
+    weather_coords_manual: bool | None = Field(
+        default=None,
+        description="When true, keep submitted lat/lon; when false, geocode from address",
+    )
+    tempest_station_id: int | None = None
+    tempest_api_token: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Tempest API token; omit or leave blank to keep saved token",
+    )
+
+
+class CreatePropertyBody(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    property_link: str = Field(..., min_length=1, max_length=200)
+    guest_google_account: str = Field(default="", max_length=200)
 
 
 @router.get("/api/aatomhome/properties")
@@ -438,8 +542,8 @@ async def put_active_property(body: ActivePropertyBody) -> dict[str, Any]:
 @router.put("/api/aatomhome/properties/{property_id}/guest-account")
 async def put_property_guest_account(property_id: int, body: GuestGoogleAccountBody) -> dict[str, Any]:
     email = body.guest_google_account.strip()
-    if "@" not in email:
-        raise HTTPException(400, "Enter a valid email address")
+    if email and "@" not in email:
+        raise HTTPException(400, "TV Google account must be an email address, or leave blank")
     prop = await db.get_property(property_id)
     if not prop:
         raise HTTPException(404, "Property not found")
@@ -453,3 +557,150 @@ async def put_property_guest_account(property_id: int, body: GuestGoogleAccountB
         "property_id": property_id,
         "guest_google_account": email,
     }
+
+
+@router.get("/api/aatomhome/geocode")
+async def geocode_property_address(address: str = "") -> dict[str, Any]:
+    """Preview geocode for a property address (Setup UI)."""
+    from geocode import geocode_address
+
+    cleaned = (address or "").strip()
+    if len(cleaned) < 5:
+        raise HTTPException(400, "Enter a full street address to geocode")
+    result = await geocode_address(cleaned)
+    if not result:
+        raise HTTPException(404, "Could not find coordinates for that address")
+    return {"ok": True, **result}
+
+
+@router.put("/api/aatomhome/properties/{property_id}/location")
+async def put_property_location(property_id: int, body: PropertyLocationBody) -> dict[str, Any]:
+    """Property address, forecast coordinates, and Tempest hyper-local weather."""
+    from geocode import geocode_address
+
+    prop = await db.get_property(property_id)
+    if not prop:
+        raise HTTPException(404, "Property not found")
+    config = dict(prop.get("config") or {})
+    defaults = dict(config.get("welcome_defaults") or guest_welcome.get_welcome_defaults(config))
+
+    prev_address = (defaults.get("property_address") or "").strip()
+    if body.property_address is not None:
+        defaults["property_address"] = body.property_address.strip()
+    if body.weather_location_name is not None:
+        defaults["weather_location_name"] = body.weather_location_name.strip()
+
+    address = (defaults.get("property_address") or "").strip()
+    coords_manual = body.weather_coords_manual
+    if coords_manual is None:
+        coords_manual = bool(defaults.get("weather_coords_manual"))
+
+    address_changed = address and address != prev_address
+    should_geocode = address and not coords_manual and (address_changed or body.weather_lat is None or body.weather_lon is None)
+
+    geocoded = None
+    if should_geocode:
+        geocoded = await geocode_address(address)
+        if geocoded:
+            defaults["weather_lat"] = geocoded["lat"]
+            defaults["weather_lon"] = geocoded["lon"]
+            defaults["weather_coords_manual"] = False
+            if not (body.weather_location_name or "").strip() and geocoded.get("label"):
+                defaults["weather_location_name"] = geocoded["label"]
+        elif body.weather_lat is not None and body.weather_lon is not None:
+            defaults["weather_lat"] = body.weather_lat
+            defaults["weather_lon"] = body.weather_lon
+            defaults["weather_coords_manual"] = True
+    elif coords_manual and body.weather_lat is not None and body.weather_lon is not None:
+        defaults["weather_lat"] = body.weather_lat
+        defaults["weather_lon"] = body.weather_lon
+        defaults["weather_coords_manual"] = True
+    else:
+        if body.weather_lat is not None:
+            defaults["weather_lat"] = body.weather_lat
+        if body.weather_lon is not None:
+            defaults["weather_lon"] = body.weather_lon
+    if body.tempest_station_id is not None:
+        defaults["tempest_station_id"] = body.tempest_station_id if body.tempest_station_id > 0 else None
+    if body.tempest_api_token is not None and body.tempest_api_token.strip():
+        defaults["tempest_api_token"] = body.tempest_api_token.strip()
+
+    config["welcome_defaults"] = defaults
+    config["guest_content_revision"] = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    await db.update_property(property_id, config=config)
+
+    location = _property_location_fields(config)
+    return {"ok": True, "property_id": property_id, **location}
+
+
+@router.put("/api/aatomhome/properties/{property_id}/property-link")
+async def put_property_link(property_id: int, body: PropertyLinkBody) -> dict[str, Any]:
+    """Free-form property key — HA config entry, slug, external ID, or any label."""
+    link = body.property_link.strip()
+    if not link:
+        raise HTTPException(400, "Property link is required")
+    prop = await db.get_property(property_id)
+    if not prop:
+        raise HTTPException(404, "Property not found")
+    config = dict(prop.get("config") or {})
+    ge = dict(config.get("guest_experience") or {})
+    ge["property_link"] = link
+    config["guest_experience"] = ge
+    config["property_link"] = link
+    await db.update_property(property_id, config=config)
+    return {
+        "ok": True,
+        "property_id": property_id,
+        "property_link": link,
+    }
+
+
+@router.post("/api/aatomhome/properties")
+async def create_property_api(body: CreatePropertyBody) -> dict[str, Any]:
+    """Add a rentable property — link key can be any string (HA name, slug, ID)."""
+    name = body.name.strip()
+    link = body.property_link.strip()
+    slug = _slugify_property_link(link)
+    if await db.get_property_by_slug(slug):
+        raise HTTPException(409, f"Property link “{link}” is already in use (slug {slug})")
+    ge: dict[str, Any] = {"property_link": link}
+    email = body.guest_google_account.strip()
+    if email:
+        if "@" not in email:
+            raise HTTPException(400, "TV Google account must be an email address, or leave blank")
+        ge["guest_google_account"] = email
+    config = {"guest_experience": ge, "property_link": link, "name": name, "slug": slug}
+    property_id = await db.create_property(name, slug, config)
+    await set_setting("active_property_id", str(property_id))
+    return {
+        "ok": True,
+        "property_id": property_id,
+        "name": name,
+        "slug": slug,
+        "property_link": link,
+        "guest_google_account": email,
+        "active_property_id": property_id,
+    }
+
+
+@router.get("/api/aatomhome/properties/by-link/{property_link:path}")
+async def get_property_by_link(property_link: str) -> dict[str, Any]:
+    """Resolve a property by free-form link key (for HA integration matching)."""
+    needle = property_link.strip()
+    if not needle:
+        raise HTTPException(400, "property_link required")
+    for prop in await db.list_properties():
+        config = prop.get("config") or {}
+        candidates = {
+            property_link_from_config(config),
+            (prop.get("slug") or "").strip(),
+            str(prop.get("id")),
+        }
+        if needle in candidates or _slugify_property_link(needle) == (prop.get("slug") or ""):
+            return {
+                "property_id": prop["id"],
+                "name": prop.get("name"),
+                "slug": prop.get("slug"),
+                "property_link": property_link_from_config(config),
+            }
+    raise HTTPException(404, "No property matches that link")

@@ -101,10 +101,16 @@ cp "$EXT_ROOT/entrypoint.sh" "$DEST/entrypoint.sh"
 chmod +x "$DEST/entrypoint.sh"
 
 if ! grep -q "$CF_MARKER" "$CONTAINERFILE" 2>/dev/null; then
-  sed -i 's|^CMD \["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"\]|# aatomhome-listen-port-entrypoint\nENV HUB_LISTEN_PORT=8080\nCOPY entrypoint.sh /app/entrypoint.sh\nRUN chmod +x /app/entrypoint.sh\nCMD ["/app/entrypoint.sh"]|' "$CONTAINERFILE"
+  sed -i 's|^CMD \["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"\]|# aatomhome-listen-port-entrypoint\nENV HUB_LISTEN_PORT=18080\nCOPY entrypoint.sh /app/entrypoint.sh\nRUN chmod +x /app/entrypoint.sh\nCMD ["/app/entrypoint.sh"]|' "$CONTAINERFILE"
   echo "==> Patched Containerfile for HUB_LISTEN_PORT entrypoint"
 else
   echo "==> Containerfile already has listen-port entrypoint"
 fi
+# Fleet shared hosts: hub 18080, ADB +1 — never default to 8080/5037 on infra3.
+sed -i \
+  -e 's/^ENV HUB_LISTEN_PORT=8080$/ENV HUB_LISTEN_PORT=18080/' \
+  -e 's/^EXPOSE 8080 5037$/EXPOSE 18080 18081/' \
+  -e 's/ADB_SERVER_PORT=5037/ADB_SERVER_PORT=18081/' \
+  "$CONTAINERFILE" 2>/dev/null || true
 
 echo "==> Extensions applied"

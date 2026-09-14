@@ -20,6 +20,15 @@ def guest_account_from_config(config: dict | None) -> str:
     return acct or DEFAULT_GUEST_GOOGLE_ACCOUNT
 
 
+def property_link_from_config(config: dict | None) -> str:
+    """Free-form key linking this hub property to HA, rooms, and external systems."""
+    if not config:
+        return ""
+    ge = (config or {}).get("guest_experience") or {}
+    link = (ge.get("property_link") or config.get("property_link") or config.get("slug") or "").strip()
+    return link
+
+
 async def resolve_guest_google_account(
     *,
     property_id: int | None = None,

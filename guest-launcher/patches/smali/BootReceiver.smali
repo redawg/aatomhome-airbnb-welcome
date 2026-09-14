@@ -63,7 +63,7 @@
 
     const-string v0, "hub_url"
 
-    const-string v1, "http://172.18.1.137:8080/guest/"
+    const-string v1, "http://172.16.1.36:18080/guest/onboard/"
 
     invoke-virtual {p2, v0, v1}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;
 

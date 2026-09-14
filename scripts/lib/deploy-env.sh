@@ -42,9 +42,15 @@ deploy_env_build_urls() {
 
 deploy_env_write_runtime() {
   local dest="$1"
+  local adb_port="${ADB_SERVER_PORT:-}"
+  if [[ -z "$adb_port" && -n "${HUB_LISTEN_PORT:-}" ]]; then
+    adb_port=$((HUB_LISTEN_PORT + 1))
+  fi
+  adb_port="${adb_port:-18081}"
   cat > "$dest" <<EOF
 HUB_PUBLIC_URL=${HUB_PUBLIC_URL}
 HUB_LISTEN_PORT=${HUB_LISTEN_PORT}
+ADB_SERVER_PORT=${adb_port}
 TEMPEST_API_TOKEN=${TEMPEST_API_TOKEN:-}
 TEMPEST_STATION_ID=${TEMPEST_STATION_ID:-}
 HA_URL=${HA_URL:-}

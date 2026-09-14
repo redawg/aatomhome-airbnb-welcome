@@ -73,6 +73,8 @@ async def guest_welcome_public(request: Request, property_id: int = 1):
         guest_google_account=ctx.get("guest_google_account") or "",
         welcome=welcome,
         property_config=config,
+        room_config=ctx.get("room_config"),
+        device=ctx.get("device"),
     )
     weather = await guest_welcome.get_weather_for_property(config, active_stay=active_stay)
     if weather:

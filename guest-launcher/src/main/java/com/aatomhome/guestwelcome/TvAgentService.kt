@@ -100,6 +100,16 @@ class TvAgentService : Service() {
                 result.put("model", Build.MODEL)
                 result.put("hub", config.hubBaseUrl(profileId))
             }
+            "enable_adb" -> {
+                val intent = Intent(this, AdbSetupActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(intent)
+                result.put("ok", true)
+                result.put("adb_setup_status", "wizard_opened")
+                result.put("adb_setup_message", "Opened ADB setup wizard on TV")
+                result.put("local_ip", localIpv4())
+            }
             else -> {
                 result.put("ok", false)
                 result.put("error", "unknown_command")

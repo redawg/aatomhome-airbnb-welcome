@@ -185,15 +185,33 @@ class TvHubClient:
         self,
         device_id: int,
         *,
-        room_name: str = "",
+        room_name: str | None = None,
         welcome_overrides: dict[str, Any] | None = None,
         controls: list[dict[str, Any]] | None = None,
+        dashboard_mode: str | None = None,
+        ha_dashboard_url: str | None = None,
     ) -> dict[str, Any]:
-        """Write per-TV room config to the hub."""
+        """Write per-TV room config to the hub (merges with existing — never wipes controls on name-only sync)."""
+        existing_payload = await self.get_room_config(device_id)
+        current = existing_payload.get("room_config") or {}
         body: dict[str, Any] = {
-            "room_name": room_name,
-            "welcome_overrides": welcome_overrides or {},
-            "controls": controls or [],
+            "room_name": room_name if room_name is not None else current.get("room_name") or "",
+            "welcome_overrides": (
+                welcome_overrides
+                if welcome_overrides is not None
+                else current.get("welcome_overrides") or {}
+            ),
+            "controls": controls if controls is not None else current.get("controls") or [],
+            "dashboard_mode": (
+                dashboard_mode
+                if dashboard_mode is not None
+                else current.get("dashboard_mode") or "cdo_str"
+            ),
+            "ha_dashboard_url": (
+                ha_dashboard_url
+                if ha_dashboard_url is not None
+                else current.get("ha_dashboard_url") or ""
+            ),
         }
         result = await self._request(
             "PUT",

@@ -17,6 +17,9 @@ _DEFAULT_ROOM = {
     "room_name": "",
     "welcome_overrides": {},
     "controls": [],
+    # cdo_str = full STR welcome (Cielo del Oro style) · ha_dashboard = Home Assistant focus
+    "dashboard_mode": "cdo_str",
+    "ha_dashboard_url": "",
 }
 
 
@@ -63,6 +66,12 @@ async def init_extension_tables() -> None:
             )
             """
         )
+        try:
+            await db.execute(
+                "ALTER TABLE aatomhome_device_meta ADD COLUMN device_session_hash TEXT"
+            )
+        except Exception:
+            pass
         await db.commit()
 
 
@@ -92,6 +101,7 @@ async def upsert_meta(device_id: int, **fields) -> dict[str, Any]:
         "device_fingerprint",
         "pending_approval",
         "agent_connected",
+        "device_session_hash",
     }
     existing = await get_meta(device_id)
     now = _now()
@@ -105,14 +115,16 @@ async def upsert_meta(device_id: int, **fields) -> dict[str, Any]:
     fingerprint = fields.get("device_fingerprint", existing.get("device_fingerprint"))
     pending = int(fields.get("pending_approval", existing.get("pending_approval", 0)))
     agent = int(fields.get("agent_connected", existing.get("agent_connected", 0)))
+    session_hash = fields.get("device_session_hash", existing.get("device_session_hash"))
 
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             """
             INSERT INTO aatomhome_device_meta (
                 device_id, room_config, claim_code, registration_status,
-                device_fingerprint, pending_approval, agent_connected, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                device_fingerprint, pending_approval, agent_connected,
+                device_session_hash, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(device_id) DO UPDATE SET
                 room_config = excluded.room_config,
                 claim_code = excluded.claim_code,
@@ -120,6 +132,7 @@ async def upsert_meta(device_id: int, **fields) -> dict[str, Any]:
                 device_fingerprint = excluded.device_fingerprint,
                 pending_approval = excluded.pending_approval,
                 agent_connected = excluded.agent_connected,
+                device_session_hash = excluded.device_session_hash,
                 updated_at = excluded.updated_at
             """,
             (
@@ -130,6 +143,7 @@ async def upsert_meta(device_id: int, **fields) -> dict[str, Any]:
                 fingerprint,
                 pending,
                 agent,
+                session_hash,
                 now,
             ),
         )
@@ -173,6 +187,22 @@ async def find_by_fingerprint(device_fingerprint: str) -> dict[str, Any] | None:
         ) as cur:
             row = await cur.fetchone()
             return dict(row) if row else None
+
+
+async def regenerate_claim_code(device_id: int) -> dict[str, Any]:
+    """Issue a new 6-character room code and clear TV binding so the slot can be claimed again."""
+    meta = await ensure_meta_for_device(device_id)
+    new_code = _gen_claim_code()
+    return await upsert_meta(
+        device_id,
+        claim_code=new_code,
+        device_fingerprint=None,
+        device_session_hash=None,
+        registration_status="unclaimed",
+        pending_approval=0,
+        agent_connected=0,
+        room_config=meta.get("room_config") or _DEFAULT_ROOM,
+    )
 
 
 async def find_by_claim_code(claim_code: str) -> dict[str, Any] | None:
@@ -280,3 +310,62 @@ async def approve_pending_device(pending_id: int, db_mod) -> dict[str, Any]:
 
 async def set_agent_connected(device_id: int, connected: bool) -> None:
     await upsert_meta(device_id, agent_connected=int(connected))
+
+
+def parse_room_config(meta: dict[str, Any] | None) -> dict[str, Any]:
+    if not meta:
+        return dict(_DEFAULT_ROOM)
+    room_cfg = meta.get("room_config") or {}
+    if isinstance(room_cfg, str):
+        try:
+            room_cfg = json.loads(room_cfg)
+        except json.JSONDecodeError:
+            room_cfg = {}
+    if not isinstance(room_cfg, dict):
+        room_cfg = {}
+    return room_cfg
+
+
+def dashboard_type_label(dashboard_mode: str | None) -> str:
+    return "HA" if dashboard_mode == "ha_dashboard" else "STR"
+
+
+def tv_agent_meta(room_cfg: dict[str, Any] | None) -> dict[str, Any]:
+    if not room_cfg:
+        return {}
+    agent = room_cfg.get("tv_agent")
+    return agent if isinstance(agent, dict) else {}
+
+
+async def update_tv_agent_meta(device_id: int, **fields: Any) -> dict[str, Any]:
+    """Merge fields into room_config.tv_agent (poll IP, ADB wizard status)."""
+    meta = await ensure_meta_for_device(device_id)
+    room_cfg = parse_room_config(meta)
+    agent = dict(tv_agent_meta(room_cfg))
+    for key, value in fields.items():
+        if value is not None:
+            agent[key] = value
+    agent["updated_at"] = _now()
+    room_cfg["tv_agent"] = agent
+    await upsert_meta(device_id, room_config=room_cfg)
+    return agent
+
+
+async def room_api_status(device_id: int, connection_state: str = "offline") -> dict[str, Any]:
+    """Shared TV row fields for registry + setup APIs."""
+    meta = await get_meta(device_id) or {}
+    room_cfg = parse_room_config(meta)
+    mode = room_cfg.get("dashboard_mode") or "cdo_str"
+    adb_online = connection_state == "device"
+    agent = tv_agent_meta(room_cfg)
+    return {
+        "agent_connected": bool(meta.get("agent_connected")),
+        "registration_status": meta.get("registration_status", "active"),
+        "dashboard_mode": mode,
+        "dashboard_type": dashboard_type_label(mode),
+        "adb_online": adb_online,
+        "tv_local_ip": (agent.get("local_ip") or "").strip(),
+        "wifi_ssid": (agent.get("wifi_ssid") or "").strip(),
+        "adb_setup_status": (agent.get("adb_setup_status") or "").strip(),
+        "adb_setup_message": (agent.get("adb_setup_message") or "").strip(),
+    }

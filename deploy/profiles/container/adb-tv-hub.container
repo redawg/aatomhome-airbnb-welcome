@@ -16,7 +16,7 @@ Volume=adb-tv-hub-data.volume:/root/.android
 Environment=ADB_CHECK_INTERVAL=15
 Environment=ADB_RECONNECT_GRACE_SEC=60
 Environment=ADB_RECONNECT_ATTEMPT_INTERVAL=300
-Environment=ADB_SERVER_PORT=5037
+Environment=ADB_SERVER_PORT=18081
 Environment=ADB_MDNS=1
 Environment=ADB_MDNS_OPENSCREEN=0
 EnvironmentFile=adb-tv-hub.env

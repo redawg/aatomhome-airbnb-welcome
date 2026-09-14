@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1, viewport-fit=cover">
+  <title>Welcome</title>
+  <script src="/guest/js/tv-display.js?v=20260914d"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/guest/css/guest.css?v=20260913c">
+  <script src="/guest/hub-config.js"></script>
+  <script src="/guest/js/claim-store.js?v=20260914k"></script>
+  <script src="/guest/js/guest-api.js?v=20260913c"></script>
+</head>
+<body>
+  <div class="scene" id="scene">
+    <div class="scene-bg" aria-hidden="true"></div>
+    <div class="scene-overlay" aria-hidden="true"></div>
+
+    <nav class="top-bar" aria-label="Quick actions">
+      <button type="button" class="top-bar-btn" id="btnScrollTop" tabindex="0">Welcome</button>
+      <button type="button" class="top-bar-btn top-bar-btn--warn" id="btnClearLogins" tabindex="0">
+        Clear all streaming logins
+      </button>
+      <button type="button" class="top-bar-btn" id="btnHaDashboard" hidden tabindex="0">Home panel</button>
+      <button type="button" class="top-bar-btn top-bar-btn--primary" id="btnGoogleTv" tabindex="0">
+        <span class="top-bar-btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M8 21h8M12 19v2"/></svg>
+        </span>
+        Google TV Apps
+      </button>
+    </nav>
+
+    <header class="hero" id="hero">
+      <div class="hero-brand">
+        <div class="property-logo-wrap" id="propertyLogoWrap" hidden>
+          <img id="propertyLogo" class="property-logo" alt="" />
+        </div>
+        <div class="hero-copy">
+          <p class="hero-eyebrow" id="heroEyebrow">Your stay at</p>
+          <h1 class="hero-title" id="title">Welcome</h1>
+          <p class="hero-subtitle" id="subtitle"></p>
+        </div>
+      </div>
+
+      <div class="hero-qr" id="heroQrWrap" hidden>
+        <div class="hero-qr-code" id="heroQrContainer">
+          <div class="qr-placeholder">Loading…</div>
+        </div>
+        <div class="hero-qr-meta">
+          <span class="hero-qr-label">Guest WiFi</span>
+          <span class="hero-qr-ssid" id="heroWifiSsid"></span>
+        </div>
+      </div>
+
+      <div class="hero-meta">
+        <div class="clock" id="clock"></div>
+        <div class="weather-pill" id="weatherPill" hidden>
+          <span class="weather-pill-row">
+            <span class="weather-icon-wrap weather-icon-wrap--lg" id="weatherPillIcon"></span>
+            <span class="weather-temps">
+              <span class="weather-temp-block">
+                <span class="weather-temp-label">Now</span>
+                <span class="weather-temp" id="weatherTemp"></span>
+              </span>
+              <span class="weather-temp-block" id="weatherFeelsWrap" hidden>
+                <span class="weather-temp-label">Feels</span>
+                <span class="weather-temp" id="weatherFeelsLike"></span>
+              </span>
+            </span>
+          </span>
+          <span class="weather-detail" id="weatherDetail"></span>
+          <div class="weather-pill-stats" id="weatherPillStats" hidden></div>
+        </div>
+        <div class="stay-dates" id="stayDates" hidden>
+          <div class="stay-date-pill">
+            <span class="pill-label">Check-in</span>
+            <span class="pill-value" id="checkInDate"></span>
+          </div>
+          <div class="stay-date-pill">
+            <span class="pill-label">Check-out</span>
+            <span class="pill-value" id="checkOutDate"></span>
+            <span class="pill-sub" id="checkOutTime" hidden></span>
+          </div>
+        </div>
+        <div class="checkout-pill" id="checkoutPill" hidden>
+          <span class="pill-label">Checkout</span>
+          <span class="pill-value" id="checkoutValue"></span>
+        </div>
+      </div>
+    </header>
+
+    <main class="content-scroll" id="contentScroll">
+      <section class="cards-row" id="cardsRow">
+        <article class="info-card info-card--wifi focusable" id="wifiCard" tabindex="0">
+          <div class="card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><path d="M12 20h.01"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="card-body">
+            <h2 class="card-title">Guest WiFi</h2>
+            <div class="wifi-layout wifi-layout--compact">
+              <div class="wifi-details">
+                <div class="wifi-field">
+                  <span class="field-label">Network</span>
+                  <span class="field-value" id="wifiSsid">—</span>
+                </div>
+                <div class="wifi-field" id="wifiPasswordRow" hidden>
+                  <span class="field-label">Password</span>
+                  <span class="field-value field-value--mono" id="wifiPassword"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="info-card focusable" id="guidebookCard" hidden tabindex="0">
+          <div class="card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h6"/></svg>
+          </div>
+          <div class="card-body">
+            <h2 class="card-title">Digital guidebook</h2>
+            <div class="guidebook-layout">
+              <div class="guidebook-qr" id="guidebookQr"></div>
+              <p class="card-hint">Scan for house manual, local tips &amp; more</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="info-card" id="weatherCard" hidden tabindex="-1">
+          <div class="card-icon card-icon--weather" id="weatherCardIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+          </div>
+          <div class="card-body">
+            <h2 class="card-title" id="weatherCardTitle">Outdoor weather</h2>
+            <p class="weather-current" id="weatherCurrent"></p>
+            <div class="station-stats" id="stationStats" hidden></div>
+            <p class="card-hint" id="weatherStayLabel"></p>
+            <div class="forecast-strip" id="forecastStrip" role="listbox" aria-label="Forecast days"></div>
+            <div class="hourly-panel" id="hourlyPanel" hidden>
+              <div class="hourly-panel-header">
+                <span class="hourly-panel-title" id="hourlyPanelTitle">Hourly forecast</span>
+                <span class="hourly-panel-hint">Use left/right to pick a day</span>
+              </div>
+              <div class="hourly-strip" id="hourlyStrip"></div>
+            </div>
+            <div class="activity-recs">
+              <div class="activity-rec" id="hikingRec"></div>
+              <div class="activity-rec" id="hotSpringsRec"></div>
+            </div>
+          </div>
+        </article>
+
+        <div class="cards-stack" id="infoStack"></div>
+      </section>
+
+      <section class="ha-dashboard-section" id="haDashboardSection" hidden>
+        <div class="ha-dashboard-toolbar">
+          <h2 class="section-heading" id="haDashboardTitle">Home Assistant</h2>
+          <p class="section-hint" id="haDashboardHint">Room dashboard from Home Assistant</p>
+        </div>
+        <iframe
+          id="haDashboardFrame"
+          class="ha-dashboard-frame"
+          title="Home Assistant dashboard"
+          allow="fullscreen"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+        ></iframe>
+        <p class="ha-dashboard-status" id="haDashboardStatus" aria-live="polite"></p>
+      </section>
+
+      <section class="room-section" id="roomSection" hidden>
+        <h2 class="section-heading" id="roomSectionTitle">Room controls</h2>
+        <p class="section-hint" id="roomSectionHint">Tap to toggle lights, fan, or blinds for this room.</p>
+        <div class="room-controls-grid" id="roomControlsGrid" role="listbox" aria-label="Room controls"></div>
+        <p class="room-controls-status" id="roomControlsStatus" aria-live="polite"></p>
+      </section>
+
+      <section class="streaming-section" id="streamingSection" hidden>
+        <h2 class="section-heading">Streaming apps</h2>
+        <p class="section-hint">Tap an app to open it. Cloud icon means tap to download and install.</p>
+        <div class="streaming-grid" id="streamingGrid" role="listbox" aria-label="Streaming apps"></div>
+        <p class="streaming-status" id="streamingStatus" aria-live="polite"></p>
+      </section>
+    </main>
+  </div>
+
+  <div class="detail-overlay" id="detailOverlay" hidden>
+    <div class="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detailModalTitle">
+      <div class="detail-modal-header">
+        <button type="button" class="detail-modal-back focusable" id="btnDetailBack" hidden tabindex="0">← All trails</button>
+        <h2 class="detail-modal-title" id="detailModalTitle"></h2>
+        <button type="button" class="detail-modal-close focusable" id="btnDetailClose" tabindex="0">Close</button>
+      </div>
+      <div class="detail-modal-body" id="detailModalBody"></div>
+      <p class="detail-modal-hint" id="detailModalHint">Press Back or Close to return</p>
+    </div>
+  </div>
+  <script src="/guest/js/guest.js?v=20260914k"></script>
+</body>
+</html>

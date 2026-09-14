@@ -60,9 +60,9 @@ aatomhome-airbnb-welcome/
 |-------|---------|--------|
 | 1 | HA integration — connect, check-in/out | Done |
 | 2 | Room name sync per TV | Done |
-| 3 | HA bridge (hub proxies service calls) | Planned |
-| 4 | Room controls on TV welcome UI | Planned |
-| 5 | HA entity picker per room | Planned |
+| 3 | HA bridge (hub proxies service calls) | Done (hub `ha_bridge.py`) |
+| 4 | Room controls on TV welcome UI | Done (`guest.js` + `room_routes.py`) |
+| 5 | HA entity picker per room | Done (Setup → Rooms detail panel) |
 
 ## Prebuilt guest launcher (MIT)
 

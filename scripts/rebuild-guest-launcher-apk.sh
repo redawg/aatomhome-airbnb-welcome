@@ -12,18 +12,23 @@ fi
 BASE_APK="${GUEST_LAUNCHER_BASE_APK:-$ROOT/tv-hub/guest-launcher/cielodeloro-guestwelcome.apk}"
 OUTPUT_APK="${GUEST_LAUNCHER_APK:-$ROOT/guest-launcher/releases/aatomhome-guest-welcome.apk}"
 PATCHES="${GUEST_LAUNCHER_PATCHES:-$ROOT/guest-launcher/patches}"
-if [[ -n "${HUB_GUEST_URL:-}" ]]; then
-  HUB_URL="$HUB_GUEST_URL"
-elif [[ -n "${HUB_PUBLIC_URL:-}" ]]; then
-  HUB_URL="${HUB_PUBLIC_URL%/}/guest/onboard/"
+if [[ -n "${HUB_PUBLIC_URL:-}" ]]; then
+  HUB_BASE="${HUB_PUBLIC_URL%/}"
+elif [[ -n "${HUB_GUEST_URL:-}" ]]; then
+  HUB_BASE="$(echo "${HUB_GUEST_URL%/}" | sed -E 's|/guest(/onboard)?/?$||')"
 else
-  HUB_URL="http://192.168.1.100:8080/guest/onboard/"
+  HUB_BASE="http://192.168.1.100:8080"
 fi
+HUB_ONBOARD_URL="${HUB_BASE}/guest/onboard/"
+HUB_GUEST_URL="${HUB_BASE}/guest/"
+HUB_URL="$HUB_ONBOARD_URL"
 WORKDIR="$(mktemp -d)"
 APKTOOL_JAR="${APKTOOL_JAR:-$WORKDIR/apktool.jar}"
 
 # shellcheck source=lib/sign-apk.sh
 source "$ROOT/scripts/lib/sign-apk.sh"
+# shellcheck source=lib/patch-apk-hub-urls.sh
+source "$ROOT/scripts/lib/patch-apk-hub-urls.sh"
 
 if [[ ! -f "$BASE_APK" ]]; then
   echo "Base APK not found: $BASE_APK" >&2
@@ -82,26 +87,47 @@ for _name, _value in (
     ("icon", "@mipmap/ic_launcher"),
     ("roundIcon", "@mipmap/ic_launcher_round"),
     ("banner", "@drawable/tv_banner"),
+    ("usesCleartextTraffic", "true"),
+    ("networkSecurityConfig", "@xml/network_security_config"),
 ):
     text = upsert_attr(text, "application", _name, _value)
 
 manifest.write_text(text)
 PY
 
+mkdir -p "$WORKDIR/guest-apk/res/xml"
+cat > "$WORKDIR/guest-apk/res/xml/network_security_config.xml" <<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
+XML
+
 mkdir -p "$WORKDIR/guest-apk/res/xml" "$WORKDIR/guest-apk/res/values"
 cp "$PATCHES/res/xml/welcome_accessibility.xml" "$WORKDIR/guest-apk/res/xml/welcome_accessibility.xml"
 STRINGS="$WORKDIR/guest-apk/res/values/strings.xml"
 PKG_OLD="com.cielodeloro.guestwelcome"
 PKG_NEW="com.aatomhome.guestwelcome"
+PKG_OLD_PATH="com/cielodeloro/guestwelcome"
+PKG_NEW_PATH="com/aatomhome/guestwelcome"
 for smali_root in "$WORKDIR/guest-apk/smali" "$WORKDIR/guest-apk/smali_classes2" "$WORKDIR/guest-apk/smali_classes3" "$WORKDIR/guest-apk/smali_classes4"; do
-  if [[ -d "$smali_root/$PKG_OLD" ]]; then
-    mkdir -p "$smali_root/$(dirname "$PKG_NEW")"
-    mv "$smali_root/$PKG_OLD" "$smali_root/$PKG_NEW"
+  if [[ -d "$smali_root/$PKG_OLD_PATH" ]]; then
+    mkdir -p "$smali_root/$(dirname "$PKG_NEW_PATH")"
+    mv "$smali_root/$PKG_OLD_PATH" "$smali_root/$PKG_NEW_PATH"
   fi
 done
+# Rewrite any remaining dotted/slash package refs in smali (R classes, inner classes).
+find "$WORKDIR/guest-apk" -name '*.smali' -print0 | xargs -0 sed -i \
+  -e "s|L${PKG_OLD//./\/}|L${PKG_NEW//./\/}|g" \
+  -e "s|$PKG_OLD|$PKG_NEW|g"
 sed -i "s/$PKG_OLD/$PKG_NEW/g" "$MANIFEST"
-mkdir -p "$WORKDIR/guest-apk/smali_classes3/$PKG_NEW"
-cp "$PATCHES/smali/"*.smali "$WORKDIR/guest-apk/smali_classes3/$PKG_NEW/"
+# Drop stock MainActivity dex (patched copy replaces it — avoids missing Kotlin $Companion).
+for smali_root in "$WORKDIR/guest-apk/smali" "$WORKDIR/guest-apk/smali_classes2" "$WORKDIR/guest-apk/smali_classes3" "$WORKDIR/guest-apk/smali_classes4"; do
+  rm -f "$smali_root/$PKG_OLD_PATH/MainActivity"*.smali 2>/dev/null || true
+  rm -f "$smali_root/$PKG_NEW_PATH/MainActivity"*.smali 2>/dev/null || true
+done
+mkdir -p "$WORKDIR/guest-apk/smali_classes3/$PKG_NEW_PATH"
+cp "$PATCHES/smali/"*.smali "$WORKDIR/guest-apk/smali_classes3/$PKG_NEW_PATH/"
 
 apply_generic_apk_branding() {
   local smali_dir="$1"
@@ -154,16 +180,9 @@ fi
 
 SMALI_DIR="$WORKDIR/guest-apk/smali_classes3/com/aatomhome/guestwelcome"
 apply_generic_apk_branding "$SMALI_DIR"
-if [[ -d "$SMALI_DIR" ]]; then
-  find "$SMALI_DIR" -name '*.smali' -print0 | xargs -0 sed -i \
-    -e "s|http://localhost:8080/guest/|${HUB_URL}|g" \
-    -e "s|http://192.168.2.1:8080/guest/|${HUB_URL}|g" \
-    -e "s|http://172.18.1.137:8080/guest/|${HUB_URL}|g" \
-    -e "s|http://172.16.1.36:18080/guest/onboard/|${HUB_URL}|g" \
-    -e "s|http://172.16.1.36:18080/guest/|${HUB_URL}|g" \
-    -e "s|http://192.168.1.100:8080/guest/onboard/|${HUB_URL}|g" \
-    -e "s|http://192.168.1.100:8080/guest/|${HUB_URL}|g"
-fi
+for smali_root in "$WORKDIR/guest-apk"/smali*; do
+  patch_apk_hub_urls "$smali_root/com/aatomhome/guestwelcome" "$smali_root/com/cielodeloro/guestwelcome"
+done
 
 APKTOOL_YML="$WORKDIR/guest-apk/apktool.yml"
 if [[ -f "$APKTOOL_YML" ]]; then
@@ -185,4 +204,10 @@ sign_apk "$OUTPUT_APK" "$WORKDIR"
 
 echo "==> Rebuilt $OUTPUT_APK (APK Signature v2/v3)"
 echo "    Hub URL: $HUB_URL"
-echo "    Push to TV: hub → Push welcome app, or POST /api/aatomhome/registry/{id}/deploy-launcher"
+echo "    Push to TV: ./scripts/dev-push-guest-launcher.sh"
+echo "    Or: hub → Push welcome app, or POST /api/aatomhome/registry/{id}/deploy-launcher"
+
+if [[ "${DEV_PUSH:-0}" == "1" ]]; then
+  cp "$OUTPUT_APK" "$ROOT/tv-hub/guest-launcher/aatomhome-guest-welcome.apk"
+  ENV_FILE="$ENV_FILE" "$ROOT/scripts/dev-push-guest-launcher.sh"
+fi

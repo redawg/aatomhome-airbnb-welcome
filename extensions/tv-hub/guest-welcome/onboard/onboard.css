@@ -1,108 +1,284 @@
+/* TV onboard — full-screen 10-foot UI (matches guest welcome scene) */
+
+html.onboard-page {
+  /* Scales with tv-display.js (--ui-scale from native resolution) */
+  font-size: calc(16px * var(--ui-scale, 1));
+  -webkit-text-size-adjust: 100%;
+}
+
+.onboard-body {
+  overflow: hidden;
+}
+
 .onboard-scene {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  padding: 1.75rem 2.5rem;
+  box-sizing: border-box;
+  isolation: isolate;
+  overflow-y: auto;
+}
+
+.onboard-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% -5%, rgba(45, 106, 79, 0.42) 0%, transparent 58%),
+    radial-gradient(ellipse 70% 50% at 50% 105%, rgba(212, 184, 122, 0.12) 0%, transparent 50%),
+    linear-gradient(160deg, #243447 0%, #141c26 42%, #0f1419 100%);
+}
+
+.onboard-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 10, 16, 0.35) 0%,
+    rgba(6, 10, 16, 0.55) 50%,
+    rgba(6, 10, 16, 0.72) 100%
+  );
+  pointer-events: none;
+}
+
+.onboard-layout {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 3rem 4rem;
-  background: radial-gradient(ellipse at 50% 0%, rgba(224, 200, 142, 0.12), transparent 55%),
-    var(--bg-deep, #0a0e12);
+  width: min(52rem, 96vw);
+  text-align: center;
+  gap: 1.35rem;
 }
 
-.onboard-card {
-  width: min(52rem, 92vw);
-  padding: 2.5rem 3rem;
-  border-radius: var(--radius, 1rem);
-  border: 1px solid var(--card-border, rgba(255, 255, 255, 0.14));
-  background: var(--card, rgba(14, 18, 24, 0.92));
-  box-shadow: var(--shadow, 0 0.5rem 1.75rem rgba(0, 0, 0, 0.45));
+.onboard-header {
+  max-width: 48rem;
+}
+
+.onboard-brand {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.85rem;
+}
+
+.onboard-brand-icon {
+  display: block;
+  width: 3.5rem;
+  height: 3.5rem;
+  max-width: 3.5rem;
+  max-height: 3.5rem;
+  flex-shrink: 0;
+  color: var(--gold, #e0c88e);
+  opacity: 0.9;
 }
 
 .onboard-eyebrow {
   color: var(--gold, #e0c88e);
-  font-size: 0.95rem;
-  letter-spacing: 0.08em;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.65rem;
 }
 
 .onboard-title {
-  font-size: 2.2rem;
+  font-size: clamp(2rem, 3.8vw, 2.85rem);
   font-weight: 700;
-  margin-bottom: 0.75rem;
+  line-height: 1.15;
+  margin-bottom: 0.55rem;
+  text-shadow: var(--text-shadow, 0 2px 12px rgba(0, 0, 0, 0.45));
 }
 
 .onboard-lead {
   color: var(--muted, #c5d0db);
-  font-size: 1.1rem;
-  line-height: 1.5;
-  margin-bottom: 2rem;
+  font-size: 1.15rem;
+  line-height: 1.45;
+  font-weight: 400;
+  padding: 0 0.5rem;
+}
+
+.onboard-lead strong {
+  color: var(--text, #fff);
+  font-weight: 600;
+}
+
+.onboard-card {
+  width: 100%;
+  max-width: 34rem;
+  padding: 1.65rem 2.25rem 1.5rem;
+  border-radius: calc(var(--radius, 1rem) * 1.25);
+  border: 1px solid var(--card-border, rgba(255, 255, 255, 0.14));
+  background: rgba(12, 16, 22, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--shadow, 0 0.5rem 1.75rem rgba(0, 0, 0, 0.45));
 }
 
 .onboard-field {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
+  text-align: left;
+}
+
+.onboard-field--code {
+  margin-bottom: 1.35rem;
 }
 
 .onboard-label {
   display: block;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
+  font-weight: 500;
   color: var(--muted, #c5d0db);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.04em;
 }
 
 .onboard-input {
   width: 100%;
   font: inherit;
-  font-size: 1.35rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 0.85rem 1rem;
-  border-radius: var(--radius-sm, 0.75rem);
+  font-weight: 600;
+  padding: 1.1rem 1.35rem;
+  border-radius: calc(var(--radius-sm, 0.75rem) * 1.1);
   border: 2px solid var(--card-border, rgba(255, 255, 255, 0.14));
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.4);
   color: var(--text, #fff);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.onboard-input--code {
+  font-size: clamp(1.85rem, 4.2vw, 2.5rem);
+  letter-spacing: 0.28em;
+  text-align: center;
+  text-transform: uppercase;
+  padding: 1rem 0.75rem;
+}
+
+.onboard-input--code::placeholder {
+  color: rgba(197, 208, 219, 0.35);
+  letter-spacing: 0.55em;
+  font-weight: 500;
+  opacity: 1;
+}
+
+.onboard-input--code:not(:placeholder-shown) {
+  letter-spacing: 0.38em;
+}
+
+.onboard-input--url {
+  font-size: 1.2rem;
+  letter-spacing: normal;
+  text-align: left;
+  text-transform: none;
+  font-weight: 500;
 }
 
 .onboard-input:focus,
 .onboard-btn:focus {
   outline: none;
+}
+
+.onboard-input.focused,
+.onboard-input:focus {
+  border-color: var(--gold, #e0c88e);
   box-shadow: var(--focus-ring, 0 0 0 3px rgba(224, 200, 142, 0.4));
 }
 
 .onboard-actions {
   display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-top: 1.5rem;
+  justify-content: center;
 }
 
 .onboard-btn {
   font: inherit;
-  font-size: 1.05rem;
-  font-weight: 600;
-  padding: 0.9rem 1.6rem;
-  border-radius: var(--radius-sm, 0.75rem);
-  border: 2px solid var(--card-border, rgba(255, 255, 255, 0.14));
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text, #fff);
+  font-size: 1.35rem;
+  font-weight: 700;
+  min-width: 14rem;
+  padding: 1.1rem 2.5rem;
+  border-radius: calc(var(--radius-sm, 0.75rem) * 1.1);
+  border: 2px solid transparent;
   cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
 .onboard-btn--primary {
-  background: linear-gradient(180deg, rgba(224, 200, 142, 0.35), rgba(224, 200, 142, 0.15));
-  border-color: var(--gold-soft, rgba(224, 200, 142, 0.4));
+  background: linear-gradient(180deg, rgba(224, 200, 142, 0.95) 0%, rgba(196, 168, 108, 0.88) 100%);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #1a1f26;
+  box-shadow: 0 4px 20px rgba(224, 200, 142, 0.25);
 }
 
 .onboard-btn.focused {
-  border-color: var(--gold, #e0c88e);
+  transform: scale(1.03);
+  box-shadow: var(--focus-ring), 0 6px 24px rgba(224, 200, 142, 0.35);
+}
+
+.onboard-btn--primary.focused {
+  border-color: #fff;
+}
+
+.onboard-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 1.1rem;
+}
+
+.onboard-footer-sep {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.onboard-link {
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--muted, #c5d0db);
+  background: none;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 0.75rem);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-color: rgba(197, 208, 219, 0.35);
+}
+
+.onboard-link.focused {
+  color: var(--gold, #e0c88e);
+  text-decoration-color: var(--gold-soft, rgba(224, 200, 142, 0.5));
   box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.onboard-advanced {
+  width: 100%;
+  max-width: 36rem;
+  padding: 1.5rem 2rem;
+  border-radius: var(--radius, 1rem);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+  text-align: left;
+}
+
+.onboard-advanced[hidden] {
+  display: none !important;
+}
+
+.onboard-advanced .onboard-field {
+  margin-bottom: 1rem;
 }
 
 .onboard-status {
-  margin-top: 1.25rem;
-  min-height: 1.5rem;
-  font-size: 1rem;
+  margin-top: 1.5rem;
+  min-height: 1.75rem;
+  font-size: 1.15rem;
   color: var(--muted, #c5d0db);
+  line-height: 1.4;
 }
 
 .onboard-status--error {
@@ -113,22 +289,10 @@
   color: #b8e6c8;
 }
 
-.onboard-meta {
-  margin-top: 1.5rem;
-  font-size: 0.9rem;
-  color: var(--muted, #c5d0db);
-  line-height: 1.45;
-}
-
-.onboard-meta code {
-  font-size: 0.85em;
-  color: var(--gold, #e0c88e);
-}
-
 .onboard-spinner {
   display: inline-block;
-  width: 1rem;
-  height: 1rem;
+  width: 1.1rem;
+  height: 1.1rem;
   border: 2px solid rgba(255, 255, 255, 0.2);
   border-top-color: var(--gold, #e0c88e);
   border-radius: 50%;

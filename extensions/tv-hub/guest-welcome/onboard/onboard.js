@@ -2,16 +2,12 @@ const focusables = [];
 let focusIndex = 0;
 
 function hubBase() {
-  if (window.HUB_BASE_URL) return String(window.HUB_BASE_URL).replace(/\/$/, "");
-  const host = window.location.hostname;
-  if (host && host !== "localhost" && host !== "127.0.0.1") {
-    return window.location.origin.replace(/\/$/, "");
-  }
-  return "";
+  return AatomClaimStore.getHubBase();
 }
 
 function apiUrl(path) {
-  return `${hubBase()}${path.startsWith("/") ? path : `/${path}`}`;
+  const base = hubBase();
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 function setStatus(message, kind) {
@@ -42,107 +38,160 @@ function moveFocus(delta) {
   applyFocus();
 }
 
+function readHubUrlInput() {
+  const input = document.getElementById("hubUrl");
+  const raw = (input?.value || "").trim();
+  return AatomClaimStore.setHubBase(raw || AatomClaimStore.DEFAULT_HUB_BASE);
+}
+
+function toggleHubAdvanced(show) {
+  const panel = document.getElementById("hubAdvanced");
+  const toggle = document.getElementById("btnToggleHub");
+  if (!panel) return;
+  const open = show ?? panel.hasAttribute("hidden");
+  if (open) {
+    panel.removeAttribute("hidden");
+    toggle?.setAttribute("aria-expanded", "true");
+  } else {
+    panel.setAttribute("hidden", "");
+    toggle?.setAttribute("aria-expanded", "false");
+  }
+  collectFocusables();
+}
+
 async function verifyExistingClaim() {
   const hub = hubBase();
   const claim = AatomClaimStore.loadClaim(hub);
-  if (!claim?.device_id) return false;
+  if (!claim?.device_id || !claim?.device_session) return false;
 
-  document.getElementById("deviceIdLabel").textContent = String(claim.device_id);
-  setStatus("Already connected — opening welcome…", "ok");
-  AatomTvAgent.startTvAgentPoll(claim.device_id, AatomClaimStore.getFingerprint());
+  const fingerprint = AatomClaimStore.getFingerprint();
+  try {
+    const res = await fetch(apiUrl(`/api/registry/device-status?fingerprint=${encodeURIComponent(fingerprint)}`), {
+      headers: { "X-Device-Fingerprint": fingerprint },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      AatomClaimStore.clearClaim(hub);
+      setStatus("Session expired — enter your room code again.", "error");
+      return false;
+    }
+    if (!data.claimed || data.device_id !== claim.device_id) {
+      AatomClaimStore.clearClaim(hub);
+      setStatus("Enter the room code from the hub.", null);
+      return false;
+    }
+  } catch (_) {
+    setStatus("Cannot reach hub — open Hub settings and check the address.", "error");
+    toggleHubAdvanced(true);
+    return false;
+  }
+
+  setStatus("Opening your room…", "ok");
+  AatomTvAgent.startTvAgentPoll(claim.device_id, fingerprint);
   window.location.replace(`${hub}/guest/`);
   return true;
 }
 
-async function claimWithCode(code) {
+function clearLocalClaimForNewCode() {
   const hub = hubBase();
+  AatomClaimStore.clearClaim(hub);
+  const input = document.getElementById("roomCode");
+  if (input) {
+    input.value = "";
+    input.focus();
+  }
+  setStatus("Enter a new room code from the hub.", null);
+  collectFocusables();
+}
+
+function resetAll() {
+  try {
+    if (typeof GuestLauncher !== "undefined" && GuestLauncher.clearClaimState) {
+      GuestLauncher.clearClaimState();
+    }
+  } catch (_) { /* ignore */ }
+  AatomClaimStore.clearHubBase();
+  const hubs = Object.keys(localStorage).filter((k) => k.startsWith("aatom_tv_claim_"));
+  hubs.forEach((k) => {
+    try {
+      localStorage.removeItem(k);
+    } catch (_) { /* ignore */ }
+  });
+  try {
+    localStorage.removeItem("aatom_tv_fingerprint");
+  } catch (_) { /* ignore */ }
+  const hubInput = document.getElementById("hubUrl");
+  if (hubInput) hubInput.value = AatomClaimStore.DEFAULT_HUB_BASE;
+  toggleHubAdvanced(true);
+  clearLocalClaimForNewCode();
+}
+
+async function fetchWithTimeout(url, options, ms = 25000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function claimWithCode(code) {
+  const hub = readHubUrlInput();
   const fingerprint = AatomClaimStore.getFingerprint();
+  const normalizedCode = String(code || "").trim().toUpperCase();
   setStatus("Connecting to hub…", null);
 
-  const res = await fetch(apiUrl("/api/registry/claim-by-code"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      claim_code: code.trim(),
-      device_fingerprint: fingerprint,
-      hub_url: hub,
-    }),
-  });
+  let res;
+  try {
+    res = await fetchWithTimeout(apiUrl("/api/registry/claim-by-code"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Device-Fingerprint": fingerprint,
+      },
+      body: JSON.stringify({
+        claim_code: normalizedCode,
+        device_fingerprint: fingerprint,
+        hub_url: hub,
+      }),
+    });
+  } catch (err) {
+    if (err?.name === "AbortError") {
+      throw new Error("Hub timed out — check Hub settings address and Wi‑Fi.");
+    }
+    throw new Error("Cannot reach hub — open Hub settings and confirm the address.");
+  }
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.detail || data.message || `Claim failed (${res.status})`);
+    throw new Error(data.detail || data.message || `Invalid room code (${res.status})`);
   }
 
   const roomConfig = data.room_config || {};
   const roomName = roomConfig.room_name || "";
   AatomClaimStore.saveClaim(hub, {
     device_id: data.device_id,
-    claim_code: code.trim().toUpperCase(),
+    device_session: data.device_session,
+    claim_code: normalizedCode,
     room_name: roomName,
     room_config: roomConfig,
+    device_fingerprint: fingerprint,
   });
 
-  document.getElementById("deviceIdLabel").textContent = String(data.device_id);
-  setStatus(
-    roomName
-      ? `Connected — ${roomName}. Syncing controls…`
-      : "Connected — syncing room & controls…",
-    "ok",
-  );
-
+  setStatus(roomName ? `Connected — ${roomName}` : "Connected", "ok");
   AatomTvAgent.startTvAgentPoll(data.device_id, fingerprint);
-  await new Promise((r) => setTimeout(r, 1200));
+  await new Promise((r) => setTimeout(r, 800));
   window.location.replace(`${hub}/guest/`);
-}
-
-async function selfRegister() {
-  const hub = hubBase();
-  const fingerprint = AatomClaimStore.getFingerprint();
-  setStatus("Registering TV with hub…", null);
-
-  const res = await fetch(apiUrl("/api/registry/self-register"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      host: fingerprint,
-      name: "Guest TV",
-      port: 5555,
-      device_fingerprint: fingerprint,
-      property_id: 1,
-    }),
-  });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.detail || data.message || `Register failed (${res.status})`);
-  }
-
-  if (data.status === "already_registered" && data.claim_code) {
-    setStatus(`TV already registered — enter room code ${data.claim_code}`, null);
-    const input = document.getElementById("roomCode");
-    if (input) input.value = data.claim_code;
-    return;
-  }
-
-  const code = data.claim_code || "";
-  setStatus(
-    code
-      ? `Pending approval on hub — your room code is ${code}. Enter it above after staff approves.`
-      : "Registered — approve this TV on the hub setup screen, then enter the room code.",
-    null,
-  );
-  if (code) {
-    const input = document.getElementById("roomCode");
-    if (input) input.value = code;
-  }
 }
 
 async function onConnect() {
   const input = document.getElementById("roomCode");
-  const code = (input?.value || "").trim();
+  const code = (input?.value || "").trim().toUpperCase();
+  if (input && code !== input.value) input.value = code;
   if (code.length < 4) {
-    setStatus("Enter the room code from the hub setup screen.", "error");
+    setStatus("Enter the 6-character room code.", "error");
+    input?.focus();
     return;
   }
   try {
@@ -153,10 +202,20 @@ async function onConnect() {
 }
 
 function bindUi() {
-  document.getElementById("hubUrlLabel").textContent = hubBase() || "—";
   document.getElementById("btnConnect")?.addEventListener("click", onConnect);
-  document.getElementById("btnSelfRegister")?.addEventListener("click", () => {
-    selfRegister().catch((err) => setStatus(err.message, "error"));
+  document.getElementById("btnNewCode")?.addEventListener("click", clearLocalClaimForNewCode);
+  document.getElementById("btnToggleHub")?.addEventListener("click", () => {
+    const panel = document.getElementById("hubAdvanced");
+    toggleHubAdvanced(panel?.hasAttribute("hidden"));
+  });
+  document.getElementById("btnChangeHub")?.addEventListener("click", () => {
+    const hubInput = document.getElementById("hubUrl");
+    if (hubInput) {
+      hubInput.value = AatomClaimStore.DEFAULT_HUB_BASE;
+      hubInput.focus();
+    }
+    setStatus("Hub reset — confirm the address, then connect.", null);
+    collectFocusables();
   });
   document.getElementById("roomCode")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
@@ -176,10 +235,51 @@ function bindUi() {
   }, true);
 
   collectFocusables();
+  document.getElementById("roomCode")?.focus();
+}
+
+async function openGuestDashboard(claim) {
+  const hub = hubBase();
+  const fp = AatomClaimStore.getFingerprint();
+  if (claim?.device_id) AatomTvAgent.startTvAgentPoll(claim.device_id, fp);
+  window.location.replace(`${hub}/guest/`);
 }
 
 (async function init() {
-  bindUi();
+  AatomClaimStore.hydrateNativeClaim?.();
+
+  const hubInput = document.getElementById("hubUrl");
+  if (hubInput) {
+    hubInput.value = hubBase() || AatomClaimStore.DEFAULT_HUB_BASE;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("reprovision") === "1") {
+    resetAll();
+    return;
+  }
+
+  // Hub already claimed this TV — go straight to guest/HA (no room-code UI).
+  const synced = await AatomClaimStore.syncSessionFromHub?.(hubBase());
+  if (synced?.device_session) {
+    await openGuestDashboard(synced);
+    return;
+  }
   if (await verifyExistingClaim()) return;
-  setStatus("Waiting for room code…", null);
+
+  bindUi();
+
+  const autoCode = (params.get("code") || params.get("claim_code") || "").trim();
+  if (autoCode.length >= 4) {
+    const input = document.getElementById("roomCode");
+    if (input) input.value = autoCode;
+    try {
+      await claimWithCode(autoCode);
+    } catch (err) {
+      setStatus(err.message || "Could not connect — check the room code.", "error");
+    }
+    return;
+  }
+
+  setStatus("Use the remote to type your code, then select Connect to room.", null);
 })();

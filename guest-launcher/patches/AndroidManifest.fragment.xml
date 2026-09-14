@@ -35,3 +35,8 @@
         <service
             android:name="com.aatomhome.guestwelcome.TvAgentService"
             android:exported="false"/>
+        <activity
+            android:name="com.aatomhome.guestwelcome.AdbSetupActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"/>

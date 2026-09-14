@@ -65,6 +65,18 @@ class HubConfig(context: Context) {
     fun setClaimed(profileId: String, claimed: Boolean) =
         prefs.edit().putBoolean(keyFor(profileId, KEY_CLAIMED_SUFFIX), claimed).apply()
 
+    fun deviceSession(profileId: String = activeProfileId): String? =
+        prefs.getString(keyFor(profileId, KEY_DEVICE_SESSION_SUFFIX), null)?.takeIf { it.isNotBlank() }
+
+    fun setDeviceSession(profileId: String, session: String?) =
+        prefs.edit().putString(keyFor(profileId, KEY_DEVICE_SESSION_SUFFIX), session?.trim()).apply()
+
+    fun deviceFingerprint(profileId: String = activeProfileId): String? =
+        prefs.getString(keyFor(profileId, KEY_FINGERPRINT_SUFFIX), null)?.takeIf { it.isNotBlank() }
+
+    fun setDeviceFingerprint(profileId: String, fingerprint: String?) =
+        prefs.edit().putString(keyFor(profileId, KEY_FINGERPRINT_SUFFIX), fingerprint?.trim()).apply()
+
     /** Any profile claimed — show welcome using active profile if claimed, else claim UI. */
     fun hasAnyClaimedProfile(): Boolean = profiles.any { isClaimed(it.id) }
 
@@ -78,6 +90,30 @@ class HubConfig(context: Context) {
         activeProfileId = profileId
         if (!hubUrl.isNullOrBlank()) applyHubUrl(profileId, hubUrl)
     }
+
+    fun saveClaimRecord(
+        profileId: String,
+        deviceId: Int,
+        session: String,
+        fingerprint: String,
+        hubUrl: String,
+        claimCode: String? = null,
+    ) {
+        markClaimed(profileId, deviceId, hubUrl)
+        setDeviceSession(profileId, session)
+        setDeviceFingerprint(profileId, fingerprint)
+        if (!claimCode.isNullOrBlank()) setClaimCode(profileId, claimCode)
+    }
+
+    fun clearClaimRecord(profileId: String = activeProfileId) {
+        setClaimed(profileId, false)
+        setDeviceId(profileId, -1)
+        setDeviceSession(profileId, null)
+        setClaimCode(profileId, null)
+    }
+
+    fun hasPersistedClaim(profileId: String = activeProfileId): Boolean =
+        isClaimed(profileId) && deviceId(profileId) > 0 && !deviceSession(profileId).isNullOrBlank()
 
     // Legacy single-hub accessors (active profile)
     var hubBaseUrl: String
@@ -104,7 +140,7 @@ class HubConfig(context: Context) {
 
     companion object {
         const val PREFS_NAME = "aatomhome_hub"
-        const val DEFAULT_HUB_BASE = "http://192.168.1.10:8080"
+        const val DEFAULT_HUB_BASE = "http://172.16.1.36:18080"
 
         const val PROFILE_HUB_A = "hub-a"
         const val PROFILE_HUB_B = "hub-b"
@@ -118,13 +154,8 @@ class HubConfig(context: Context) {
         val BUILTIN_PROFILES = listOf(
             HubProfile(
                 PROFILE_HUB_A,
-                "Hub A",
-                "http://192.168.1.10:8080",
-            ),
-            HubProfile(
-                PROFILE_HUB_B,
-                "Hub B",
-                "http://192.168.1.11:8080",
+                "Property hub",
+                DEFAULT_HUB_BASE,
             ),
         )
 
@@ -136,5 +167,7 @@ class HubConfig(context: Context) {
         private const val KEY_DEVICE_ID_SUFFIX = "device_id"
         private const val KEY_CLAIM_CODE_SUFFIX = "claim_code"
         private const val KEY_CLAIMED_SUFFIX = "claimed"
+        private const val KEY_DEVICE_SESSION_SUFFIX = "device_session"
+        private const val KEY_FINGERPRINT_SUFFIX = "device_fingerprint"
     }
 }

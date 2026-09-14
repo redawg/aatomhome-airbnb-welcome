@@ -10,9 +10,16 @@ if [[ -f "$ENV_FILE" ]]; then
 fi
 
 APK="${GUEST_LAUNCHER_APK:-$ROOT/guest-launcher/releases/aatomhome-guest-welcome.apk}"
-HUB_URL="${HUB_GUEST_URL:-${HUB_PUBLIC_URL%/}/guest/onboard/}"
+HUB_BASE="${HUB_PUBLIC_URL%/}"
+HUB_ONBOARD_URL="${HUB_BASE}/guest/onboard/"
+HUB_GUEST_URL="${HUB_BASE}/guest/"
 WORKDIR="$(mktemp -d)"
 APKTOOL_JAR="${APKTOOL_JAR:-$WORKDIR/apktool.jar}"
+
+# shellcheck source=lib/patch-apk-hub-urls.sh
+source "$ROOT/scripts/lib/patch-apk-hub-urls.sh"
+# shellcheck source=lib/sign-apk.sh
+source "$ROOT/scripts/lib/sign-apk.sh"
 
 if [[ ! -f "$APK" ]]; then
   echo "APK not found: $APK" >&2
@@ -24,26 +31,18 @@ if ! command -v java >/dev/null; then
   exit 1
 fi
 
-echo "==> Patching APK hub URL → $HUB_URL"
+echo "==> Patching APK hub URL → $HUB_ONBOARD_URL"
 curl -fsSL -o "$APKTOOL_JAR" \
   https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar
 
 java -jar "$APKTOOL_JAR" d -f "$APK" -o "$WORKDIR/guest-apk"
 
-SMALI_DIR="$WORKDIR/guest-apk/smali_classes3/com/cielodeloro/guestwelcome"
-if [[ -d "$SMALI_DIR" ]]; then
-  find "$SMALI_DIR" -name '*.smali' -print0 | xargs -0 sed -i \
-    -e "s|http://localhost:8080/guest/|${HUB_URL}|g" \
-    -e "s|http://192.168.2.1:8080/guest/|${HUB_URL}|g" \
-    -e "s|http://172.18.1.137:8080/guest/|${HUB_URL}|g" \
-    -e "s|http://172.16.1.36:18080/guest/|${HUB_URL}|g" \
-    -e "s|http://192.168.1.100:8080/guest/|${HUB_URL}|g"
-fi
+for smali_root in "$WORKDIR/guest-apk"/smali*; do
+  patch_apk_hub_urls "$smali_root/com/aatomhome/guestwelcome" "$smali_root/com/cielodeloro/guestwelcome"
+done
 
 java -jar "$APKTOOL_JAR" b "$WORKDIR/guest-apk" -o "$WORKDIR/guest-unsigned.apk"
 
-# shellcheck source=lib/sign-apk.sh
-source "$ROOT/scripts/lib/sign-apk.sh"
 cp "$WORKDIR/guest-unsigned.apk" "$APK"
 sign_apk "$APK" "$WORKDIR"
 (

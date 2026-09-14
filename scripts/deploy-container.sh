@@ -82,7 +82,7 @@ if [[ "$MODE" == "remote" ]]; then
     rsync -az -e "$RSYNC_SSH" "$ENV_TMP" "${HA_USER}@${DEPLOY_HOST}:${QUADLET_TARGET}/adb-tv-hub.env"
     "${SSH[@]}" "sed -i 's|^Image=.*|Image=${IMAGE}|' ${QUADLET_TARGET}/adb-tv-hub.container"
     "${SSH[@]}" "loginctl enable-linger ${HA_USER} 2>/dev/null || true"
-    "${SSH[@]}" "systemctl --user daemon-reload && systemctl --user enable --now adb-tv-hub.service"
+    "${SSH[@]}" "systemctl --user daemon-reload && (systemctl --user restart adb-tv-hub.service || systemctl --user enable --now adb-tv-hub.service)"
   fi
 else
   ENV_FILE="$ENV_FILE" "$ROOT/scripts/build.sh"
