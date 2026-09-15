@@ -1799,9 +1799,16 @@ function applyConfig(config) {
   const titleEl = document.getElementById("title");
   const eyebrow = document.getElementById("heroEyebrow");
 
-  titleEl.textContent = config.title || "Welcome";
+  const defaultTitle = config.property_name ? `Welcome to ${config.property_name}` : "Welcome";
+  const configuredTitle = (config.title || "").trim();
+  titleEl.textContent = configuredTitle && configuredTitle.toLowerCase() !== "welcome"
+    ? configuredTitle
+    : defaultTitle;
+
   if (config.hero_eyebrow && eyebrow) {
     eyebrow.textContent = config.hero_eyebrow;
+  } else if (config.managing_company && eyebrow) {
+    eyebrow.textContent = config.managing_company;
   } else if (guestName) {
     if (eyebrow) {
       eyebrow.textContent = config.property_title || config.property_name || "Your stay at";

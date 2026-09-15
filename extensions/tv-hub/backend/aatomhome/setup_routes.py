@@ -20,7 +20,7 @@ from . import store
 from guest_account_resolve import guest_account_from_config, property_link_from_config
 
 from . import ha_bridge
-from .setup_store import get_ha_config, get_setting, save_ha_config, set_setting
+from .setup_store import get_ha_config, get_managing_company, get_setting, save_ha_config, set_setting
 from .launcher_routes import _apk_info, hub_onboarding_url
 from .tv_agent_ws import hub_public_url
 
@@ -373,10 +373,11 @@ async def get_setup_status() -> dict[str, Any]:
     ha_test = await _test_ha(ha_cfg["ha_url"], ha_cfg["ha_token"]) if ha_cfg["ha_url"] and ha_cfg["ha_token"] else {"ok": False}
     tvs = await _tv_summary()
     hub_url = hub_public_url()
-    property_name = (await get_setting("property_name")) or os.environ.get("PROPERTY_NAME", "My property")
+    managing_company = await get_managing_company()
     active_property_id = await _active_property_id()
     properties = await _property_summaries()
     active_prop = next((p for p in properties if p["id"] == active_property_id), properties[0] if properties else None)
+    active_property_name = (active_prop or {}).get("name") or f"Property {active_property_id}"
     guest_account = (active_prop or {}).get("guest_google_account") or ""
     guest_sign_in = _guest_sign_in_info(guest_account)
     return {
@@ -385,7 +386,8 @@ async def get_setup_status() -> dict[str, Any]:
             "guest_url": f"{hub_url}/guest/",
             "onboard_url": f"{hub_url}/guest/onboard/",
             "admin_url": hub_url,
-            "property_name": property_name,
+            "managing_company": managing_company,
+            "active_property_name": active_property_name,
             "active_property_id": active_property_id,
             "guest_google_account": guest_account,
             "guest_sign_in": guest_sign_in,
@@ -470,14 +472,36 @@ async def post_ha_test(body: HaTestBody | None = None) -> dict[str, Any]:
     return result
 
 
-class PropertyNameBody(BaseModel):
-    property_name: str = Field(..., min_length=1, max_length=120)
+class ManagingCompanyBody(BaseModel):
+    managing_company: str = Field(..., min_length=1, max_length=120)
+    property_name: str | None = Field(
+        default=None,
+        max_length=120,
+        description="Legacy alias — treated as managing_company",
+    )
+
+
+class PropertyDisplayNameBody(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
 
 
 @router.put("/api/aatomhome/setup/property")
-async def put_property_name(body: PropertyNameBody) -> dict[str, Any]:
-    await set_setting("property_name", body.property_name.strip())
-    return {"ok": True, "property_name": body.property_name.strip()}
+async def put_managing_company(body: ManagingCompanyBody) -> dict[str, Any]:
+    company = (body.managing_company or body.property_name or "").strip()
+    if not company:
+        raise HTTPException(400, "Company name is required")
+    await set_setting("managing_company", company)
+    return {"ok": True, "managing_company": company}
+
+
+@router.put("/api/aatomhome/properties/{property_id}/display-name")
+async def put_property_display_name(property_id: int, body: PropertyDisplayNameBody) -> dict[str, Any]:
+    prop = await db.get_property(property_id)
+    if not prop:
+        raise HTTPException(404, "Property not found")
+    name = body.name.strip()
+    await db.update_property(property_id, name=name)
+    return {"ok": True, "property_id": property_id, "name": name}
 
 
 class ActivePropertyBody(BaseModel):

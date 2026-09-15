@@ -9,7 +9,13 @@ import aiosqlite
 
 from .store import DB_PATH
 
-_SETTINGS_KEYS = ("property_name", "ha_url", "ha_token", "active_property_id")
+_SETTINGS_KEYS = (
+    "property_name",
+    "managing_company",
+    "ha_url",
+    "ha_token",
+    "active_property_id",
+)
 
 
 async def init_setup_tables() -> None:
@@ -38,9 +44,18 @@ async def get_setting(key: str, default: str = "") -> str:
         "ha_url": os.environ.get("HA_URL", ""),
         "ha_token": os.environ.get("HA_LONG_LIVED_TOKEN", "") or os.environ.get("HA_TOKEN", ""),
         "property_name": os.environ.get("PROPERTY_NAME", ""),
+        "managing_company": os.environ.get("MANAGING_COMPANY", ""),
         "active_property_id": os.environ.get("PROPERTY_ID", "1"),
     }
     return env_map.get(key, default) or default
+
+
+async def get_managing_company() -> str:
+    """Hub-wide company shown on guest welcome (e.g. Asholding LLC)."""
+    company = (await get_setting("managing_company")).strip()
+    if company:
+        return company
+    return (await get_setting("property_name")).strip()
 
 
 async def set_setting(key: str, value: str) -> None:

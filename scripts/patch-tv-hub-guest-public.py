@@ -75,6 +75,7 @@ async def guest_welcome_public(request: Request, property_id: int = 1):
         property_config=config,
         room_config=ctx.get("room_config"),
         device=ctx.get("device"),
+        managing_company=ctx.get("managing_company") or "",
     )
     weather = await guest_welcome.get_weather_for_property(config, active_stay=active_stay)
     if weather:

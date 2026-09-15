@@ -11,7 +11,7 @@ import database as db
 from guest_account_resolve import guest_account_from_config
 
 from . import store
-from .setup_store import get_setting
+from .setup_store import get_managing_company, get_setting
 
 logger = logging.getLogger("aatomhome.guest_public")
 
@@ -64,8 +64,8 @@ async def resolve_guest_public_context(
 
     prop = await db.get_property(property_id)
     config = (prop or {}).get("config") or {}
-    setup_property_name = (await get_setting("property_name")) or ""
-    property_name = (prop or {}).get("name") or setup_property_name or f"Property {property_id}"
+    property_name = (prop or {}).get("name") or f"Property {property_id}"
+    managing_company = await get_managing_company()
     guest_google_account = guest_account_from_config(config)
 
     enabled_packages: list[str] | None = None
@@ -77,7 +77,7 @@ async def resolve_guest_public_context(
     return {
         "property_id": property_id,
         "property_name": property_name,
-        "setup_property_name": setup_property_name,
+        "managing_company": managing_company,
         "guest_google_account": guest_google_account,
         "config": config,
         "device": device,
@@ -145,9 +145,11 @@ def enrich_public_config(
     property_config: dict | None,
     room_config: dict | None = None,
     device: dict | None = None,
+    managing_company: str = "",
 ) -> dict[str, Any]:
     public["property_id"] = property_id
     public["property_name"] = property_name
+    public["managing_company"] = (managing_company or "").strip()
     public["guest_google_account"] = guest_google_account
     public["property_map"] = property_map_from_welcome(welcome, property_config, property_name)
     prop_map = public.get("property_map") or {}
@@ -163,8 +165,18 @@ def enrich_public_config(
     configured_eyebrow = (welcome.get("hero_eyebrow") or public.get("hero_eyebrow") or "").strip()
     if configured_eyebrow:
         public["hero_eyebrow"] = configured_eyebrow
+    elif managing_company:
+        public["hero_eyebrow"] = managing_company
     elif room_name:
         public["hero_eyebrow"] = f"Your stay in {room_name}"
+    elif property_name:
+        public["hero_eyebrow"] = f"Welcome to {property_name}"
+
+    configured_title = (welcome.get("title") or public.get("title") or "").strip()
+    if configured_title and configured_title.lower() not in ("welcome",):
+        public["title"] = configured_title
+    elif property_name:
+        public["title"] = f"Welcome to {property_name}"
     if device:
         public["tv_device_id"] = device.get("id")
         public["tv_device_name"] = device.get("name")

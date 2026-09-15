@@ -1813,8 +1813,14 @@ async function loadSetupStatus() {
     setText("setupGuestUrl", hub.guest_url);
     setText("setupOnboardUrl", hub.onboard_url || `${(hub.public_url || "").replace(/\/$/, "")}/guest/onboard/`);
     setText("setupIntegrationHubUrl", integration.hub_url_hint || hub.public_url);
-    const propInput = document.getElementById("setupPropertyName");
-    if (propInput && hub.property_name) propInput.value = hub.property_name;
+    const companyInput = document.getElementById("setupManagingCompany");
+    if (companyInput && document.activeElement !== companyInput) {
+      companyInput.value = hub.managing_company || "";
+    }
+    const displayNameInput = document.getElementById("setupPropertyDisplayName");
+    if (displayNameInput && document.activeElement !== displayNameInput) {
+      displayNameInput.value = hub.active_property_name || activePropertyName();
+    }
 
     const haUrl = document.getElementById("setupHaUrl");
     if (haUrl && ha.ha_url) haUrl.value = ha.ha_url;
@@ -1945,7 +1951,7 @@ const SETUP_SECTION_LABELS = {
 
 const SETUP_SECTION_LEADS = {
   overview: "Progress checklist and hub URLs.",
-  property: "Property ID, guest page preview, address & weather, and welcome screen content.",
+  property: "Property name, company, ID, guest preview, address & weather, and welcome content.",
   ha: "Connect the hub to Home Assistant.",
   rooms: "Room codes, registered TVs, and provisioning paths.",
   integration: "Add the Home Assistant integration.",
@@ -4009,14 +4015,28 @@ document.getElementById("btnSetupRoomCode")?.addEventListener("click", async () 
     toast(err.message || "Could not generate room code", "error");
   }
 });
-document.getElementById("setupPropertyForm")?.addEventListener("submit", async e => {
+document.getElementById("setupManagingCompanyForm")?.addEventListener("submit", async e => {
   e.preventDefault();
-  const name = document.getElementById("setupPropertyName")?.value?.trim();
+  const company = document.getElementById("setupManagingCompany")?.value?.trim();
+  if (!company) return;
+  try {
+    await api("/aatomhome/setup/property", { method: "PUT", body: { managing_company: company } });
+    toast("Company name saved", "success");
+    await loadSetupStatus();
+    refreshGuestWelcomePreview();
+  } catch (err) {
+    toast(err.message || "Save failed", "error");
+  }
+});
+document.getElementById("setupPropertyDisplayNameForm")?.addEventListener("submit", async e => {
+  e.preventDefault();
+  const name = document.getElementById("setupPropertyDisplayName")?.value?.trim();
   if (!name) return;
   try {
-    await api("/aatomhome/setup/property", { method: "PUT", body: { property_name: name } });
-    toast("Property name saved", "success");
+    await api(`/aatomhome/properties/${activePropertyId}/display-name`, { method: "PUT", body: { name } });
+    toast(`Property name saved for ${name}`, "success");
     await loadSetupStatus();
+    await loadGuestWelcome();
   } catch (err) {
     toast(err.message || "Save failed", "error");
   }

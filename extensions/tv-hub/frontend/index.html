@@ -390,20 +390,29 @@
               <p class="setup-panel-lead">Everything guests see on the TV welcome screen (same on every TV). Per-room name, dashboard mode, and HA controls are under <strong>Rooms &amp; TVs</strong>.</p>
               <section class="setup-card">
                 <dl class="setup-dl">
-                  <dt>Property name</dt>
-                  <dd>
-                    <form class="setup-inline-form" id="setupPropertyForm">
-                      <input type="text" id="setupPropertyName" placeholder="Forest Home" maxlength="120" required />
-                      <button type="submit" class="btn btn-secondary btn-sm">Save</button>
-                    </form>
-                  </dd>
                   <dt>Active property (TVs &amp; provisioning)</dt>
                   <dd>
                     <div class="setup-inline-form">
                       <select id="setupPropertySelect" class="setup-property-select" aria-label="Select property for TV provisioning"></select>
                       <button type="button" class="btn btn-secondary btn-sm" id="btnSetupAddProperty">+ Add</button>
                     </div>
-                    <p class="field-hint">Welcome content, streaming apps, and guest account are per property.</p>
+                    <p class="field-hint">Welcome content, streaming apps, and guest account are per property. Switch here to edit another rental.</p>
+                  </dd>
+                  <dt>Property name</dt>
+                  <dd>
+                    <form class="setup-inline-form" id="setupPropertyDisplayNameForm">
+                      <input type="text" id="setupPropertyDisplayName" placeholder="Forest Home" maxlength="120" required />
+                      <button type="submit" class="btn btn-secondary btn-sm">Save</button>
+                    </form>
+                    <p class="field-hint">Rental name for the active property — shown as “Welcome to …” on the guest TV screen.</p>
+                  </dd>
+                  <dt>Company managing the property</dt>
+                  <dd>
+                    <form class="setup-inline-form" id="setupManagingCompanyForm">
+                      <input type="text" id="setupManagingCompany" placeholder="Asholding LLC" maxlength="120" required />
+                      <button type="submit" class="btn btn-secondary btn-sm">Save</button>
+                    </form>
+                    <p class="field-hint">Hub-wide management company shown in the eyebrow line on every guest welcome screen.</p>
                   </dd>
                   <dt>Property ID</dt>
                   <dd>
@@ -513,17 +522,17 @@
                       <div class="guest-welcome-form-heading" style="margin-top:0.75rem;">Hero text</div>
                       <label class="kids-theme-field">
                         <span>Eyebrow</span>
-                        <input type="text" id="guestWelcomeEyebrow" placeholder="Welcome to Forest Home" maxlength="120" />
+                        <input type="text" id="guestWelcomeEyebrow" placeholder="Asholding LLC" maxlength="120" />
                       </label>
                       <label class="kids-theme-field">
                         <span>Title</span>
-                        <input type="text" id="guestWelcomeTitle" placeholder="Welcome to Cielo del Oro" maxlength="120" />
+                        <input type="text" id="guestWelcomeTitle" placeholder="Welcome to Forest Home" maxlength="120" />
                       </label>
                       <label class="kids-theme-field">
                         <span>Subtitle</span>
                         <input type="text" id="guestWelcomeSubtitle" placeholder="Connect to WiFi and choose a streaming service" maxlength="200" />
                       </label>
-                      <p class="field-hint">Leave eyebrow blank to show the room name on each TV.</p>
+                      <p class="field-hint">Leave blank to auto-use <strong>Company managing the property</strong> (eyebrow) and <strong>Welcome to {property name}</strong> (title) from Setup above.</p>
                     </div>
                     <div class="guest-welcome-form-section">
                       <div class="guest-welcome-form-heading">WiFi &amp; stay</div>
@@ -1161,6 +1170,6 @@
     </div>
   </aside>
 
-  <script src="/js/app.js?v=34"></script>
+  <script src="/js/app.js?v=35"></script>
 </body>
 </html>
